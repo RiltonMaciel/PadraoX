@@ -13,7 +13,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ========== TIPMINER API (encrypted) ==========
 const TIPMINER_PW = process.env.TIPMINER_PW || '70c74c04-7426-4ab5-b9e6-14820a97a4d7';
 const GAME_PID = process.env.GAME_PID || '0194b478-7a59-73aa-96aa-2217057b286c';
-const PROXY_URL = process.env.TIPMINER_PROXY_URL || '';
+const PROXY_URL = process.env.TIPMINER_PROXY_URL || 'https://tipminer-proxy.riltonmaciel.workers.dev';
 
 function tipMinerKey(uuid) {
   const k = uuid.length >= 32 ? uuid : [uuid, TIPMINER_PW].join('').slice(0, 32);
