@@ -19,25 +19,42 @@ function tipMinerKey(uuid) {
   return uuidv5(k, uuid);
 }
 
-async function fetchTipMinerAPI(limit) {
+async function fetchTipMinerAPI(limit, retries = 3) {
   const url = `https://www.tipminer.com/api/v3/history/double/${GAME_PID}?timezone=America/Sao_Paulo&limit=${limit}&subject=filter`;
-  const r = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      'stack': 'redux',
-      'referer': 'https://www.tipminer.com'
-    },
-    timeout: 15000
-  });
-  if (!r.ok) throw new Error(`TipMiner HTTP ${r.status}`);
-  const json = await r.json();
-  const xcrypt = r.headers.get('X-Crypt');
-  if (!xcrypt || !json.data) return Array.isArray(json) ? json : [];
-  const seal = json.data.split('~')[0];
-  const pw = tipMinerKey(GAME_PID);
-  const decrypted = await Iron.unseal(seal, { '1': pw }, Iron.defaults);
-  const parsed = typeof decrypted === 'string' ? JSON.parse(decrypted) : decrypted;
-  return Array.isArray(parsed) ? parsed : [];
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const r = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Referer': 'https://www.tipminer.com/',
+          'Origin': 'https://www.tipminer.com',
+          'stack': 'redux',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-origin',
+          'sec-ch-ua': '"Chromium";v="125", "Not.A/Brand";v="24"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"'
+        },
+        timeout: 15000
+      });
+      if (!r.ok) throw new Error(`TipMiner HTTP ${r.status}`);
+      const json = await r.json();
+      const xcrypt = r.headers.get('X-Crypt');
+      if (!xcrypt || !json.data) return Array.isArray(json) ? json : [];
+      const seal = json.data.split('~')[0];
+      const pw = tipMinerKey(GAME_PID);
+      const decrypted = await Iron.unseal(seal, { '1': pw }, Iron.defaults);
+      const parsed = typeof decrypted === 'string' ? JSON.parse(decrypted) : decrypted;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      console.error(`[TipMiner] Tentativa ${attempt}/${retries} falhou: ${err.message}`);
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
+  }
 }
 
 // ========== ESTADO ==========
@@ -648,4 +665,29 @@ app.get('/api/padrao-cadeia', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Padrão X rodando em http://localhost:${PORT}`);
+  // Auto-fetch na inicialização
+  (async () => {
+    try {
+      console.log('[Startup] Buscando dados do TipMiner...');
+      const rounds = await fetchTipMinerAPI(1000);
+      if (rounds.length > 0) {
+        historicoGlobal = rounds.map(r => { const n = parseInt(r.result); return isNaN(n) ? 0 : n; }).reverse();
+        horariosGlobal = rounds.map(r => {
+          const ts = r.time || r.date || r.created_at || r.createdAt || r.timestamp;
+          if (ts) {
+            if (typeof ts === 'string' && /^\d{2}:\d{2}/.test(ts)) return ts.slice(0, 5);
+            const d = new Date(ts);
+            if (!isNaN(d.getTime())) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          }
+          return '--:--';
+        }).reverse();
+        ultimaBusca = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        console.log(`[Startup] ${historicoGlobal.length} rodadas carregadas com sucesso.`);
+      } else {
+        console.log('[Startup] TipMiner retornou 0 resultados.');
+      }
+    } catch (e) {
+      console.error('[Startup] Falha ao buscar TipMiner:', e.message);
+    }
+  })();
 });
