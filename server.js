@@ -13,6 +13,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ========== TIPMINER API (encrypted) ==========
 const TIPMINER_PW = process.env.TIPMINER_PW || '70c74c04-7426-4ab5-b9e6-14820a97a4d7';
 const GAME_PID = process.env.GAME_PID || '0194b478-7a59-73aa-96aa-2217057b286c';
+const PROXY_URL = process.env.TIPMINER_PROXY_URL || '';
 
 function tipMinerKey(uuid) {
   const k = uuid.length >= 32 ? uuid : [uuid, TIPMINER_PW].join('').slice(0, 32);
@@ -20,39 +21,44 @@ function tipMinerKey(uuid) {
 }
 
 async function fetchTipMinerAPI(limit, retries = 3) {
-  const url = `https://www.tipminer.com/api/v3/history/double/${GAME_PID}?timezone=America/Sao_Paulo&limit=${limit}&subject=filter`;
-  for (let attempt = 1; attempt <= retries; attempt++) {
+  const directUrl = `https://www.tipminer.com/api/v3/history/double/${GAME_PID}?timezone=America/Sao_Paulo&limit=${limit}&subject=filter`;
+  const proxyUrl = PROXY_URL ? `${PROXY_URL}?limit=${limit}&pid=${GAME_PID}` : null;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    // Na primeira tentativa, tenta direto. Depois usa proxy se disponível.
+    const useProxy = attempt > 0 && proxyUrl;
+    const url = useProxy ? proxyUrl : directUrl;
+
     try {
-      const r = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-          'Referer': 'https://www.tipminer.com/',
-          'Origin': 'https://www.tipminer.com',
-          'stack': 'redux',
-          'sec-fetch-dest': 'empty',
-          'sec-fetch-mode': 'cors',
-          'sec-fetch-site': 'same-origin',
-          'sec-ch-ua': '"Chromium";v="125", "Not.A/Brand";v="24"',
-          'sec-ch-ua-mobile': '?0',
-          'sec-ch-ua-platform': '"Windows"'
-        },
-        timeout: 15000
-      });
-      if (!r.ok) throw new Error(`TipMiner HTTP ${r.status}`);
+      const headers = useProxy ? {} : {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.tipminer.com/',
+        'Origin': 'https://www.tipminer.com',
+        'stack': 'redux',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin'
+      };
+
+      const r = await fetch(url, { headers, timeout: 15000 });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const json = await r.json();
-      const xcrypt = r.headers.get('X-Crypt');
-      if (!xcrypt || !json.data) return Array.isArray(json) ? json : [];
-      const seal = json.data.split('~')[0];
-      const pw = tipMinerKey(GAME_PID);
-      const decrypted = await Iron.unseal(seal, { '1': pw }, Iron.defaults);
-      const parsed = typeof decrypted === 'string' ? JSON.parse(decrypted) : decrypted;
-      return Array.isArray(parsed) ? parsed : [];
+
+      if (Array.isArray(json)) return json;
+      if (json.data) {
+        const seal = json.data.split('~')[0];
+        const pw = tipMinerKey(GAME_PID);
+        const decrypted = await Iron.unseal(seal, { '1': pw }, Iron.defaults);
+        const parsed = typeof decrypted === 'string' ? JSON.parse(decrypted) : decrypted;
+        return Array.isArray(parsed) ? parsed : [];
+      }
+      return [];
     } catch (err) {
-      console.error(`[TipMiner] Tentativa ${attempt}/${retries} falhou: ${err.message}`);
-      if (attempt === retries) throw err;
-      await new Promise(r => setTimeout(r, 2000 * attempt));
+      console.error(`[TipMiner] Tentativa ${attempt + 1}/${retries} (${useProxy ? 'proxy' : 'direto'}) falhou: ${err.message}`);
+      if (attempt === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 2000));
     }
   }
 }
