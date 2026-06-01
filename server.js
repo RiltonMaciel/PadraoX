@@ -25,7 +25,6 @@ async function fetchTipMinerAPI(limit, retries = 3) {
   const proxyUrl = PROXY_URL ? `${PROXY_URL}?limit=${limit}&pid=${GAME_PID}` : null;
 
   for (let attempt = 0; attempt < retries; attempt++) {
-    // Na primeira tentativa, tenta direto. Depois usa proxy se disponível.
     const useProxy = attempt > 0 && proxyUrl;
     const url = useProxy ? proxyUrl : directUrl;
 
@@ -43,8 +42,14 @@ async function fetchTipMinerAPI(limit, retries = 3) {
       };
 
       const r = await fetch(url, { headers, timeout: 15000 });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const json = await r.json();
+      const text = await r.text();
+      
+      if (!r.ok) throw new Error(`HTTP ${r.status} - ${text.slice(0, 100)}`);
+      
+      let json;
+      try { json = JSON.parse(text); } catch (e) {
+        throw new Error(`Resposta não é JSON: ${text.slice(0, 100)}`);
+      }
 
       if (Array.isArray(json)) return json;
       if (json.data) {
@@ -54,7 +59,7 @@ async function fetchTipMinerAPI(limit, retries = 3) {
         const parsed = typeof decrypted === 'string' ? JSON.parse(decrypted) : decrypted;
         return Array.isArray(parsed) ? parsed : [];
       }
-      return [];
+      throw new Error(`Formato inesperado: ${JSON.stringify(json).slice(0, 100)}`);
     } catch (err) {
       console.error(`[TipMiner] Tentativa ${attempt + 1}/${retries} (${useProxy ? 'proxy' : 'direto'}) falhou: ${err.message}`);
       if (attempt === retries - 1) throw err;
@@ -62,6 +67,37 @@ async function fetchTipMinerAPI(limit, retries = 3) {
     }
   }
 }
+
+// ========== DIAGNÓSTICO ==========
+app.get('/api/diagnostico', async (req, res) => {
+  const results = { proxy_url: PROXY_URL || '(não configurado)', tentativas: [] };
+  const directUrl = `https://www.tipminer.com/api/v3/history/double/${GAME_PID}?timezone=America/Sao_Paulo&limit=5&subject=filter`;
+  
+  // Teste direto
+  try {
+    const r = await fetch(directUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'stack': 'redux', 'Referer': 'https://www.tipminer.com/' },
+      timeout: 10000
+    });
+    const t = await r.text();
+    results.tentativas.push({ tipo: 'direto', status: r.status, body: t.slice(0, 200) });
+  } catch (e) {
+    results.tentativas.push({ tipo: 'direto', erro: e.message });
+  }
+  
+  // Teste proxy
+  if (PROXY_URL) {
+    try {
+      const r2 = await fetch(`${PROXY_URL}?limit=5&pid=${GAME_PID}`, { timeout: 10000 });
+      const t2 = await r2.text();
+      results.tentativas.push({ tipo: 'proxy', status: r2.status, body: t2.slice(0, 200) });
+    } catch (e2) {
+      results.tentativas.push({ tipo: 'proxy', erro: e2.message });
+    }
+  }
+  
+  res.json(results);
+});
 
 // ========== ESTADO ==========
 let historicoGlobal = [];
