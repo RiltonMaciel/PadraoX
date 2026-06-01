@@ -637,19 +637,25 @@ app.get('/api/padrao-cadeia', (req, res) => {
   }
   if (idxBrancos.length < 2) return res.json({ erro: 'Poucos brancos encontrados.' });
 
-  // Último branco
-  const ultimoBrancoIdx = idxBrancos[idxBrancos.length - 1];
+  // Encontrar o branco mais recente com vizinhos válidos (não-zero)
+  let ultimoBrancoIdx = -1;
+  let n1 = 0, n2 = 0;
+  for (let bi = idxBrancos.length - 1; bi >= 0; bi--) {
+    const idx = idxBrancos[bi];
+    const p1 = idx - 2;
+    const p2 = idx - 3;
+    if (p2 < 0) continue;
+    if (nums[p1] !== 0 && nums[p2] !== 0) {
+      ultimoBrancoIdx = idx;
+      n1 = nums[p1];
+      n2 = nums[p2];
+      break;
+    }
+  }
+  if (ultimoBrancoIdx === -1) return res.json({ erro: 'Nenhum branco com vizinhos válidos encontrado.' });
+
   const ultimoBrancoHora = horas[ultimoBrancoIdx] || '--:--';
   const rodadasDesdeUltimo = nums.length - 1 - ultimoBrancoIdx;
-
-  // Passo 1: Padrão X
-  const pos1 = ultimoBrancoIdx - 2;
-  const pos2 = ultimoBrancoIdx - 3;
-  if (pos2 < 0) return res.json({ erro: 'Branco muito no início dos dados.' });
-
-  const n1 = nums[pos1];
-  const n2 = nums[pos2];
-  if (n1 === 0 || n2 === 0) return res.json({ erro: 'Vizinhos contêm branco. Aguardar próximo ciclo.' });
 
   const maxVal = Math.max(n1, n2);
   const posAlvo = ultimoBrancoIdx + maxVal;
