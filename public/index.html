@@ -397,10 +397,11 @@
     async function buscarDados() {
       // Só mostra loading na primeira vez
       const dashboard = document.getElementById('dashboard');
+      const loadingEl = document.getElementById('estadoLoading');
       const isFirstLoad = dashboard.style.display === 'none';
       if (isFirstLoad) {
         document.getElementById('estadoInicial').style.display = 'none';
-        document.getElementById('estadoLoading').style.display = 'block';
+        loadingEl.style.display = 'block';
       }
 
       try {
@@ -416,9 +417,17 @@
           document.getElementById('sidebarLive').style.display = 'flex';
           await carregarPrevisoes();
         } else {
+          if (isFirstLoad) {
+            loadingEl.style.display = 'none';
+            dashboard.style.display = 'block';
+          }
           console.error(data.mensagem || 'Erro ao buscar dados');
         }
       } catch (e) {
+        if (isFirstLoad) {
+          loadingEl.style.display = 'none';
+          dashboard.style.display = 'block';
+        }
         console.error('Erro de conexão: ' + e.message);
       }
     }
