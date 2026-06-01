@@ -3,12 +3,48 @@ const path = require('path');
 const fetch = require('node-fetch');
 const Iron = require('@hapi/iron');
 const { v5: uuidv5 } = require('uuid');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ========== CHAT ==========
+const onlineUsers = new Map(); // socketId -> nome
+const chatHistory = []; // últimas 50 mensagens
+const MAX_HISTORY = 50;
+
+io.on('connection', (socket) => {
+  socket.on('entrar', (nome) => {
+    const nomeClean = String(nome || '').trim().slice(0, 20);
+    if (!nomeClean) return;
+    onlineUsers.set(socket.id, nomeClean);
+    io.emit('usuarios', { total: onlineUsers.size, lista: [...onlineUsers.values()] });
+    socket.emit('historico-chat', chatHistory);
+    io.emit('sistema', { texto: `${nomeClean} entrou no chat` });
+  });
+
+  socket.on('mensagem', (texto) => {
+    const nome = onlineUsers.get(socket.id);
+    if (!nome || !texto) return;
+    const msg = { nome, texto: String(texto).slice(0, 300), hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) };
+    chatHistory.push(msg);
+    if (chatHistory.length > MAX_HISTORY) chatHistory.shift();
+    io.emit('mensagem', msg);
+  });
+
+  socket.on('disconnect', () => {
+    const nome = onlineUsers.get(socket.id);
+    onlineUsers.delete(socket.id);
+    io.emit('usuarios', { total: onlineUsers.size, lista: [...onlineUsers.values()] });
+    if (nome) io.emit('sistema', { texto: `${nome} saiu do chat` });
+  });
+});
 
 // ========== TIPMINER API (encrypted) ==========
 const TIPMINER_PW = process.env.TIPMINER_PW || '70c74c04-7426-4ab5-b9e6-14820a97a4d7';
@@ -705,7 +741,7 @@ app.get('/api/padrao-cadeia', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Padrão X rodando em http://localhost:${PORT}`);
   // Auto-fetch na inicialização
   (async () => {
