@@ -349,7 +349,10 @@
 
         <!-- Lista de previsões -->
         <div class="card" id="previsaoListCard">
-          <h3 style="margin-bottom:16px; font-size:16px;">🎯 Próximos Brancos Previstos</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px;">🎯 Próximos Brancos Previstos</h3>
+            <button onclick="copiarPrevisoes()" id="btnCopiar" style="background:rgba(91,92,255,.12);color:var(--primary);border:1px solid rgba(91,92,255,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">📋 Copiar</button>
+          </div>
           <div id="previsaoLista" class="previsao-lista"></div>
         </div>
 
@@ -381,6 +384,22 @@
 
   <script>
     let autoRefresh = null;
+
+    function copiarPrevisoes() {
+      const rows = document.querySelectorAll('#previsaoLista .prev-row');
+      if (rows.length === 0) return;
+      const linhas = [];
+      rows.forEach(row => {
+        const horario = row.querySelector('.horario')?.textContent?.trim();
+        if (horario) linhas.push(`${horario} - branco`);
+      });
+      const texto = linhas.join('\n');
+      navigator.clipboard.writeText(texto).then(() => {
+        const btn = document.getElementById('btnCopiar');
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+      });
+    }
 
     function toggleTheme() {
       const html = document.documentElement;
