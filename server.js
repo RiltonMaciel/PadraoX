@@ -181,44 +181,102 @@ function preverProximosBrancos(nums, horas, quantidade) {
     intervalosReais.push(idxBrancos[i] - idxBrancos[i - 1]);
   }
 
-  const medianaIntervalo = [...intervalosReais].sort((a, b) => a - b)[Math.floor(intervalosReais.length / 2)];
+  // Estatísticas dos intervalos
+  const sorted = [...intervalosReais].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)]; // 25% — intervalo curto
+  const mediana = sorted[Math.floor(sorted.length * 0.5)]; // 50%
+  const ultimos10 = intervalosReais.slice(-10);
+  const mediaRecente = Math.round(ultimos10.reduce((a, b) => a + b, 0) / ultimos10.length);
 
-  // Previsão do PRIMEIRO branco via Padrão X + Cadeia
+  // Último branco
   const ultimoBrancoIdx = idxBrancos[idxBrancos.length - 1];
-  const pos1 = ultimoBrancoIdx - 2;
-  const pos2 = ultimoBrancoIdx - 3;
+  const rodadasDesdeUltimo = nums.length - 1 - ultimoBrancoIdx;
 
-  let previsaoRodadas;
-  let metodo = 'MAX';
-  let cadeiaSaltos = 0;
-
-  if (pos2 >= 0 && nums[pos1] !== 0 && nums[pos2] !== 0) {
-    const maxVal = Math.max(nums[pos1], nums[pos2]);
-    const posAlvo = ultimoBrancoIdx + maxVal;
-
-    // Aplicar cadeia se alvo já foi ultrapassado e não é branco
-    if (posAlvo < nums.length && nums[posAlvo] !== 0) {
-      let posAtual = posAlvo;
-      let passos = 0;
-      while (posAtual < nums.length && nums[posAtual] !== 0 && passos < 10) {
-        posAtual += nums[posAtual];
-        passos++;
-      }
-      previsaoRodadas = posAtual - ultimoBrancoIdx;
-      cadeiaSaltos = passos;
-      metodo = 'CADEIA';
-    } else {
-      previsaoRodadas = maxVal;
+  // ===== PREVISÃO INTELIGENTE DO 1º BRANCO =====
+  // Buscar branco com vizinhos válidos para Padrão X
+  let n1 = 0, n2 = 0, brancoBase = ultimoBrancoIdx;
+  for (let bi = idxBrancos.length - 1; bi >= 0; bi--) {
+    const idx = idxBrancos[bi];
+    const p1 = idx - 2, p2 = idx - 3;
+    if (p2 >= 0 && nums[p1] !== 0 && nums[p2] !== 0) {
+      brancoBase = idx;
+      n1 = nums[p1];
+      n2 = nums[p2];
+      break;
     }
-  } else {
-    previsaoRodadas = medianaIntervalo;
-    metodo = 'MEDIANA';
   }
 
-  const rodadasDesdeUltimo = nums.length - 1 - ultimoBrancoIdx;
-  const agora = new Date();
+  let previsaoRodadas;
+  let metodo = 'SMART';
+  let cadeiaSaltos = 0;
 
+  if (n1 > 0 && n2 > 0) {
+    // Em vez de MAX puro (erra demais pra cima), usar fórmula corrigida:
+    // - Média dos dois números (reduz erro de "adiantou")
+    // - Cap pelo intervalo médio recente (nunca prever absurdamente longe)
+    // - Se já passou do previsto, sinalizar iminente
+    const media = Math.ceil((n1 + n2) / 2);
+    const maxVal = Math.max(n1, n2);
+    const minVal = Math.min(n1, n2);
+
+    // Peso: se ambos altos, usar média (MAX erra muito); se um é baixo, usar algo entre min e média
+    let estimativa;
+    if (maxVal >= 10) {
+      // Números altos: usar MIN+1 ou média, o que for menor (dados mostram que branco vem cedo)
+      estimativa = Math.min(minVal + 2, media);
+    } else if (maxVal >= 7) {
+      // Médios: usar média - 1
+      estimativa = Math.max(media - 1, minVal);
+    } else {
+      // Baixos (≤6): usar média (tende a ser preciso)
+      estimativa = media;
+    }
+
+    // Cap: nunca prever mais que o intervalo médio recente
+    estimativa = Math.min(estimativa, mediaRecente);
+
+    // Aplicar cadeia LIMITADA (max 2 saltos, dados mostram que mais que isso erra sempre)
+    const posAlvo = brancoBase + estimativa;
+    if (posAlvo < nums.length && nums[posAlvo] !== 0 && posAlvo > ultimoBrancoIdx) {
+      let posAtual = posAlvo;
+      let passos = 0;
+      while (posAtual < nums.length && nums[posAtual] !== 0 && passos < 2) {
+        const salto = Math.min(nums[posAtual], 5); // Cap salto individual em 5
+        posAtual += salto;
+        passos++;
+      }
+      previsaoRodadas = posAtual - brancoBase;
+      cadeiaSaltos = passos;
+      metodo = 'SMART+CADEIA';
+    } else {
+      previsaoRodadas = estimativa;
+    }
+
+    // Se brancoBase não é o último branco, ajustar offset
+    if (brancoBase !== ultimoBrancoIdx) {
+      const offset = ultimoBrancoIdx - brancoBase;
+      previsaoRodadas = Math.max(previsaoRodadas - offset, mediaRecente);
+      metodo = 'SMART(adj)';
+    }
+  } else {
+    previsaoRodadas = mediaRecente;
+    metodo = 'MEDIA';
+  }
+
+  // Rodadas restantes para o primeiro branco
+  let rodadasRestantes1 = previsaoRodadas - rodadasDesdeUltimo;
+
+  // Se já passou da previsão, branco é IMINENTE (em 1-3 rodadas)
+  if (rodadasRestantes1 <= 0) {
+    rodadasRestantes1 = Math.min(3, Math.ceil(q1 / 3));
+    metodo += '(IMIN)';
+  }
+
+  const agora = new Date();
   const SEGUNDOS_POR_RODADA = 30;
+
+  // Espaçamento entre previsões: usar Q1 (intervalo curto) para sinais frequentes
+  const espacamento = Math.max(q1, 4); // mínimo 4 rodadas entre previsões
 
   // Gerar lista de previsões
   const previsoes = [];
@@ -227,10 +285,9 @@ function preverProximosBrancos(nums, horas, quantidade) {
     let rodadasAteEste;
 
     if (i === 0) {
-      rodadasAteEste = previsaoRodadas - rodadasDesdeUltimo;
+      rodadasAteEste = rodadasRestantes1;
     } else {
-      const prevAnterior = previsoes[i - 1];
-      rodadasAteEste = prevAnterior.rodadasRestantes + medianaIntervalo;
+      rodadasAteEste = previsoes[i - 1].rodadasRestantes + espacamento;
     }
 
     const segundosAte = Math.max(0, rodadasAteEste) * SEGUNDOS_POR_RODADA;
@@ -240,26 +297,23 @@ function preverProximosBrancos(nums, horas, quantidade) {
     previsoes.push({
       ordem: i + 1,
       horario: horaFormatada,
-      rodadasRestantes: Math.max(0, Math.round(rodadasAteEste)),
+      rodadasRestantes: Math.max(1, Math.round(rodadasAteEste)),
       tempoRestante: formatarTempo(segundosAte),
-      metodo: i === 0 ? metodo : 'MEDIANA',
+      metodo: i === 0 ? metodo : 'CICLO',
       cadeiaSaltos: i === 0 ? cadeiaSaltos : 0
     });
   }
 
-  const n1 = pos2 >= 0 ? nums[pos1] : '?';
-  const n2 = pos2 >= 0 ? nums[pos2] : '?';
-  const formulaBase = `MAX(${n1}, ${n2}) = ${pos2 >= 0 ? Math.max(nums[pos1], nums[pos2]) : '?'}`;
-  const formulaTexto = metodo === 'CADEIA'
-    ? `${formulaBase} + Cadeia(${cadeiaSaltos}x) = ${previsaoRodadas} rodadas`
-    : `${formulaBase} rodadas`;
+  const formulaTexto = `AVG(${n1},${n2})=${Math.ceil((n1+n2)/2)} | Recente:${mediaRecente} | Q1:${q1}`;
 
   return {
     previsoes,
     formula: formulaTexto,
     metodo,
     cadeiaSaltos,
-    medianaIntervalo,
+    medianaIntervalo: mediana,
+    mediaRecente,
+    q1,
     ultimoBranco: {
       hora: horas[ultimoBrancoIdx] || '--:--',
       rodadasAtras: rodadasDesdeUltimo
@@ -657,20 +711,45 @@ app.get('/api/padrao-cadeia', (req, res) => {
   const ultimoBrancoHora = horas[ultimoBrancoIdx] || '--:--';
   const rodadasDesdeUltimo = nums.length - 1 - ultimoBrancoIdx;
 
-  const maxVal = Math.max(n1, n2);
-  const posAlvo = ultimoBrancoIdx + maxVal;
+  // Estatísticas de intervalos para calibrar
+  const intervalos = [];
+  for (let i = 1; i < idxBrancos.length; i++) {
+    intervalos.push(idxBrancos[i] - idxBrancos[i - 1]);
+  }
+  const sortedInt = [...intervalos].sort((a, b) => a - b);
+  const medianaInt = sortedInt[Math.floor(sortedInt.length / 2)];
+  const ultimos10 = intervalos.slice(-10);
+  const mediaRecente = Math.round(ultimos10.reduce((a, b) => a + b, 0) / ultimos10.length);
 
-  // Passo 2: Cadeia de saltos
+  // Fórmula inteligente: AVG em vez de MAX, com cap
+  const maxVal = Math.max(n1, n2);
+  const minVal = Math.min(n1, n2);
+  const media = Math.ceil((n1 + n2) / 2);
+
+  let estimativa;
+  if (maxVal >= 10) {
+    estimativa = Math.min(minVal + 2, media);
+  } else if (maxVal >= 7) {
+    estimativa = Math.max(media - 1, minVal);
+  } else {
+    estimativa = media;
+  }
+  estimativa = Math.min(estimativa, mediaRecente);
+
+  const posAlvo = ultimoBrancoIdx + estimativa;
+
+  // Passo 2: Cadeia de saltos (max 2 para precisão)
   const chain = [];
   let posAtual = posAlvo;
   let previsaoFinal = posAlvo;
 
   if (posAlvo < nums.length && nums[posAlvo] !== 0) {
     let passos = 0;
-    while (posAtual < nums.length && nums[posAtual] !== 0 && passos < 10) {
+    while (posAtual < nums.length && nums[posAtual] !== 0 && passos < 2) {
       const n = nums[posAtual];
+      const saltoReal = Math.min(n, 5); // cap salto individual em 5
       chain.push({ pos: posAtual, num: n, hora: horas[posAtual] || '--:--' });
-      posAtual += n;
+      posAtual += saltoReal;
       passos++;
     }
     previsaoFinal = posAtual;
@@ -678,8 +757,15 @@ app.get('/api/padrao-cadeia', (req, res) => {
     previsaoFinal = posAlvo;
   }
 
-  const rodadasRestantes = previsaoFinal - (nums.length - 1);
+  // Cap final: nunca prever mais que mediaRecente * 1.3
+  const capFinal = ultimoBrancoIdx + Math.ceil(mediaRecente * 1.3);
+  if (previsaoFinal > capFinal) previsaoFinal = capFinal;
+
+  let rodadasRestantes = previsaoFinal - (nums.length - 1);
   const rodadasRestantesMinus1 = rodadasRestantes - 1;
+
+  // Se já passou, branco é iminente
+  if (rodadasRestantes <= 0) rodadasRestantes = Math.max(1, Math.ceil(sortedInt[0] / 2));
 
   // Status
   let status = 'aguardando';
@@ -687,17 +773,18 @@ app.get('/api/padrao-cadeia', (req, res) => {
   else if (rodadasRestantes <= 2) status = 'iminente';
   else if (rodadasRestantes <= 5) status = 'proximo';
 
-  // Confiança
-  let confianca = 60;
+  // Confiança baseada na proximidade e dados recentes
+  let confianca = 65;
+  if (rodadasDesdeUltimo >= mediaRecente) confianca += 15; // já passou da média, chance alta
   if (chain.length > 0) {
     const ultimoNum = chain[chain.length - 1].num;
-    if (ultimoNum <= 5) confianca += 20;
+    if (ultimoNum <= 5) confianca += 15;
     else if (ultimoNum <= 8) confianca += 5;
-    else confianca -= 15;
+    else confianca -= 10;
   }
-  if (chain.length <= 2) confianca += 10;
-  if (chain.length >= 5) confianca -= 15;
-  confianca = Math.max(10, Math.min(95, confianca));
+  if (chain.length <= 1) confianca += 10;
+  if (rodadasDesdeUltimo >= mediaRecente * 1.5) confianca += 10; // muito atrasado
+  confianca = Math.max(15, Math.min(95, confianca));
 
   const ultimoNumCadeia = chain.length > 0 ? chain[chain.length - 1].num : 0;
   const riscoOvershoot = ultimoNumCadeia >= 8;
@@ -734,10 +821,10 @@ app.get('/api/padrao-cadeia', (req, res) => {
 
   res.json({
     ultimoBranco: { hora: ultimoBrancoHora, rodadasAtras: rodadasDesdeUltimo },
-    padraoX: { n1, n2, max: maxVal, posAlvo, alvoJaPassou: posAlvo < nums.length },
+    padraoX: { n1, n2, max: maxVal, estimativa, mediaRecente, posAlvo, alvoJaPassou: posAlvo < nums.length },
     cadeia: { saltos: chain, totalSaltos: chain.length, previsaoFinal, posicaoMinus1: previsaoFinal - 1 },
     previsao: {
-      rodadasRestantes: Math.max(0, rodadasRestantes),
+      rodadasRestantes: Math.max(1, rodadasRestantes),
       rodadasRestantesMinus1: Math.max(0, rodadasRestantesMinus1),
       tempoEstimadoSeg: Math.max(0, rodadasRestantes * 30),
       status, riscoOvershoot, ultimoNumCadeia
