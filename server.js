@@ -292,7 +292,7 @@ function preverProximosBrancos(nums, horas, quantidade) {
 
     const segundosAte = Math.max(0, rodadasAteEste) * SEGUNDOS_POR_RODADA;
     const horaPrevista = new Date(agora.getTime() + segundosAte * 1000);
-    const horaFormatada = horaPrevista.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' });
+    const horaFormatada = horaPrevista.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
     previsoes.push({
       ordem: i + 1,
