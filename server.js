@@ -32,7 +32,7 @@ io.on('connection', (socket) => {
   socket.on('mensagem', (texto) => {
     const nome = onlineUsers.get(socket.id);
     if (!nome || !texto) return;
-    const msg = { nome, texto: String(texto).slice(0, 300), hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) };
+    const msg = { nome, texto: String(texto).slice(0, 300), hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) };
     chatHistory.push(msg);
     if (chatHistory.length > MAX_HISTORY) chatHistory.shift();
     io.emit('mensagem', msg);
@@ -292,7 +292,7 @@ function preverProximosBrancos(nums, horas, quantidade) {
 
     const segundosAte = Math.max(0, rodadasAteEste) * SEGUNDOS_POR_RODADA;
     const horaPrevista = new Date(agora.getTime() + segundosAte * 1000);
-    const horaFormatada = horaPrevista.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const horaFormatada = horaPrevista.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' });
 
     previsoes.push({
       ordem: i + 1,
@@ -362,14 +362,14 @@ app.post('/api/buscar', async (req, res) => {
         if (ts) {
           if (typeof ts === 'string' && /^\d{2}:\d{2}/.test(ts)) return ts.slice(0, 5);
           const d = new Date(ts);
-          if (!isNaN(d.getTime())) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          if (!isNaN(d.getTime())) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
         }
         return '--:--';
       }).reverse();
 
       historicoGlobal = nums;
       horariosGlobal = horas;
-      ultimaBusca = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      ultimaBusca = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' });
 
       return res.json({
         sucesso: true,
@@ -848,11 +848,11 @@ server.listen(PORT, () => {
           if (ts) {
             if (typeof ts === 'string' && /^\d{2}:\d{2}/.test(ts)) return ts.slice(0, 5);
             const d = new Date(ts);
-            if (!isNaN(d.getTime())) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            if (!isNaN(d.getTime())) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
           }
           return '--:--';
         }).reverse();
-        ultimaBusca = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        ultimaBusca = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' });
         console.log(`[Startup] ${historicoGlobal.length} rodadas carregadas com sucesso.`);
       } else {
         console.log('[Startup] TipMiner retornou 0 resultados.');
