@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Padrao X - Previsao do Branco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div>
+      <div class="logo">
+        <h1>Padrao<span>X</span></h1>
+        <p>Previsao Temporal do Branco</p>
+      </div>
+      <nav class="menu">
+        <a class="active" href="#">Dashboard</a>
+        <a href="#">Regras</a>
+        <a href="#">Historico</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <p>Ultima atualizacao</p>
+      <strong id="sidebarHora">--:--:--</strong>
+      <div class="live" id="sidebarLive" style="display:none">
+        <div class="dot"></div>
+        AO VIVO
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <h2>Dashboard</h2>
+        <p>Previsao do proximo branco usando Padrao X</p>
+      </div>
+      <div class="top-actions">
+        <button class="theme-btn" onclick="toggleTheme()">&#127769;</button>
+      </div>
+    </div>
+
+    <div id="estadoInicial" style="display:none"></div>
+
+    <div id="estadoLoading" style="display:none">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Buscando dados do TipMiner...</p>
+      </div>
+    </div>
+
+    <div id="dashboard" style="display:none">
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:20px;">
+        <div class="card">
+          <h3>Formula Ativa</h3>
+          <div class="number" id="formulaInfo" style="font-size:18px; color:var(--primary)">-</div>
+        </div>
+        <div class="card">
+          <h3>Ultimo Branco</h3>
+          <div class="number" id="ultimoBrancoInfo" style="font-size:18px;">-</div>
+          <span class="small" id="rodadasAtrasInfo">-</span>
+        </div>
+        <div class="card">
+          <h3>Mediana Intervalo</h3>
+          <div class="number" id="medianaInfo">-</div>
+          <span class="small">rodadas entre brancos</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px; padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <label style="font-size:14px; font-weight:600;">Quantidade de previsoes:</label>
+        <input type="range" id="qtdRange" min="5" max="100" value="20" oninput="document.getElementById('qtdLabel').textContent=this.value" style="flex:1; min-width:150px;">
+        <span id="qtdLabel" style="font-weight:700; color:var(--primary); min-width:30px;">20</span>
+        <button class="btn-buscar" onclick="carregarPrevisoes()" style="padding:10px 16px; font-size:13px;">Atualizar</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+
+        <div class="card" id="previsaoListCard">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px;">&#127919; Proximos Brancos Previstos</h3>
+            <button onclick="copiarPrevisoes()" id="btnCopiar" style="background:rgba(91,92,255,.12);color:var(--primary);border:1px solid rgba(91,92,255,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">&#128203; Copiar</button>
+          </div>
+          <div id="previsaoLista" class="previsao-lista"></div>
+        </div>
+
+        <div class="card" id="sinaisPassadosCard">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px;">&#128202; Sinais Passados</h3>
+            <span class="taxa-badge" id="taxaAcerto">-</span>
+          </div>
+          <div id="sinaisLista" class="sinais-lista"></div>
+        </div>
+
+      </div>
+
+      <div class="card cadeia-panel" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>&#128279; Padrao Cadeia - Previsao Refinada</h3>
+          <span class="cadeia-timer" id="cadeiaTimer">Atualiza em 5s</span>
+        </div>
+        <div id="padraoCadeiaContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px; border-color: rgba(167,139,250,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:#a78bfa;">&#9201; Previsao por Tempo - Proximos Brancos</h3>
+          <button id="btnCopiarTempo" onclick="copiarHorariosTempo()" style="background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">&#128203; Copiar</button>
+        </div>
+        <div id="previsaoTempoContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px; border-color: rgba(239,68,68,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:#ef4444;">&#128721; Detector de REC - Stop-Loss</h3>
+        </div>
+        <div id="recDetectorContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px; border-color: rgba(91,92,255,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:var(--primary, #5b5cff);">🤖 Bot Apostador — Banca Fictícia</h3>
+        </div>
+        <div id="botContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Carregando bot...</p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <div id="modalNome" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div style="background:var(--card);padding:36px;border-radius:20px;border:1px solid var(--border);max-width:360px;width:90%;text-align:center;">
+      <h2 style="margin-bottom:8px;font-size:22px;">&#128075; Bem-vindo!</h2>
+      <p style="color:var(--text-soft);font-size:13px;margin-bottom:20px;">Digite seu nome para entrar no chat</p>
+      <input id="inputNome" type="text" maxlength="20" placeholder="Seu nome..." style="width:100%;padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:15px;font-weight:600;outline:none;" autofocus>
+      <button id="btnEntrar" style="margin-top:14px;width:100%;padding:14px;border:none;border-radius:12px;background:var(--primary);color:white;font-size:15px;font-weight:700;cursor:pointer;">Entrar</button>
+    </div>
+  </div>
+
+  <div id="chatWidget" style="display:none;">
+    <div id="chatBox">
+      <div id="chatHeader">
+        <div><h4>&#128172; Chat</h4><span id="chatOnline">0 online</span></div>
+      </div>
+      <div id="chatMsgs"></div>
+      <div id="chatInput">
+        <input id="chatTxt" type="text" maxlength="300" placeholder="Digite uma mensagem...">
+        <button onclick="enviarMsg()">&#10148;</button>
+      </div>
+    </div>
+    <button id="chatToggle" onclick="toggleChat()">&#128172;<span id="chatBadge" style="display:none">0</span></button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/cadeia.js"></script>
+  <script src="/js/tempo.js"></script>
+  <script src="/js/rec.js"></script>
+  <script src="/js/bot.js"></script>
+  <script src="/js/chat.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

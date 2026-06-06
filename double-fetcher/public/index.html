@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blaze Excel Exporter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #050816;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at top left, #0b2a5a55, transparent 30%),
+        radial-gradient(circle at bottom right, #00d2ff22, transparent 25%);
+      z-index: -1;
+    }
+    .container {
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 32px;
+      color: #20c9ff;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+    .subtitle {
+      color: #7c8ca5;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: linear-gradient(180deg, #0b1224, #0a1020);
+      border: 1px solid #1b2a4d;
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.45);
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 18px;
+      color: #dce9ff;
+      margin-bottom: 20px;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .btn {
+      border: none;
+      padding: 18px 24px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,.4); }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-200 { background: #0f2d4d; color: #4cc9ff; border: 1px solid #17456f; }
+    .btn-500 { background: #0f2d1a; color: #00ff95; border: 1px solid #174f27; }
+    .btn-1000 { background: #2d2a0f; color: #ffcc4d; border: 1px solid #4f4517; }
+    .btn-2000 { background: #2d0f1a; color: #ff5667; border: 1px solid #4f1727; }
+    .btn span { font-size: 28px; font-weight: 800; }
+    .btn small { font-size: 12px; opacity: 0.7; }
+
+    /* FEEDBACK */
+    .feedback {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 16px;
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .feedback.sucesso {
+      display: block;
+      background: rgba(0,255,149,.08);
+      border: 1px solid rgba(0,255,149,.3);
+      color: #00ff95;
+    }
+    .feedback.erro {
+      display: block;
+      background: rgba(255,86,103,.08);
+      border: 1px solid rgba(255,86,103,.3);
+      color: #ff5667;
+    }
+    .feedback.loading {
+      display: block;
+      background: rgba(76,201,255,.08);
+      border: 1px solid rgba(76,201,255,.3);
+      color: #4cc9ff;
+    }
+    .feedback h3 { margin-bottom: 6px; font-size: 15px; }
+    .feedback p { font-size: 13px; opacity: 0.85; word-break: break-all; }
+    .feedback .path { font-family: monospace; font-size: 12px; margin-top: 8px; background: rgba(0,0,0,.3); padding: 8px 12px; border-radius: 8px; }
+
+    .btn-open {
+      margin-top: 12px;
+      background: #1b2a4d;
+      color: #4cc9ff;
+      border: 1px solid #17456f;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-open:hover { background: #243a5f; }
+
+    /* PADRÃO X */
+    .padrao-x { margin-top: 0; }
+    .padrao-x h2 { color: #ffcc4d; }
+    .previsao-box {
+      background: #0a1628;
+      border: 1px solid #1b2a4d;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 14px;
+    }
+    .previsao-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .status-badge {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .status-aguardando { background: #1b2a4d; color: #7c8ca5; }
+    .status-iminente { background: #2d2a0f; color: #ffcc4d; animation: pulse 1s infinite; }
+    .status-atrasado { background: #2d0f1a; color: #ff5667; animation: pulse 1.5s infinite; }
+    .status-expirado { background: #1a1a1a; color: #555; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .previsao-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .info-item {
+      background: #0d1b2e;
+      border: 1px solid #1b2a4d;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+    .info-item label { display: block; font-size: 11px; color: #7c8ca5; margin-bottom: 4px; }
+    .info-item span { font-size: 20px; font-weight: 800; }
+
+    .confianca-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: #1b2a4d;
+      margin: 14px 0 6px;
+      overflow: hidden;
+    }
+    .confianca-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s;
+    }
+    .confianca-label { font-size: 12px; color: #7c8ca5; display: flex; justify-content: space-between; }
+
+    .sinais-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0;
+    }
+    .sinal-tag {
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .sinal-bloq { background: rgba(255,86,103,.15); color: #ff5667; border: 1px solid rgba(255,86,103,.3); }
+    .sinal-fav { background: rgba(0,255,149,.1); color: #00ff95; border: 1px solid rgba(0,255,149,.3); }
+    .sinal-alerta { background: rgba(255,204,77,.1); color: #ffcc4d; border: 1px solid rgba(255,204,77,.3); }
+
+    .historico-mini { margin-top: 14px; }
+    .historico-mini h4 { font-size: 13px; color: #7c8ca5; margin-bottom: 8px; }
+    .hist-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #1b2a4d22;
+      font-size: 12px;
+    }
+    .hist-acerto { color: #00ff95; }
+    .hist-erro { color: #ff5667; }
+
+    .dica-box {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(255,204,77,.08);
+      border: 1px solid rgba(255,204,77,.25);
+      font-size: 13px;
+      color: #ffcc4d;
+    }
+
+    .btn-refresh {
+      background: #1b2a4d;
+      color: #ffcc4d;
+      border: 1px solid #4f4517;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .btn-refresh:hover { background: #2d2a0f; }
+
+    /* LISTA DE ARQUIVOS */
+    .arquivos-list {
+      margin-top: 14px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .arquivo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #1b2a4d;
+      font-size: 13px;
+    }
+    .arquivo-item:last-child { border-bottom: none; }
+    .arquivo-nome { color: #4cc9ff; font-weight: 500; }
+    .arquivo-info { color: #7c8ca5; font-size: 11px; }
+
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(76,201,255,.3);
+      border-top-color: #4cc9ff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Blaze Excel Exporter</h1>
+    <p class="subtitle">Exporte resultados do Blaze Double direto para Excel</p>
+
+    <div class="card">
+      <h2>Selecione a quantidade de resultados</h2>
+      <div class="btn-grid">
+        <button class="btn btn-200" onclick="exportar(200)">
+          <span>200</span>
+          <small>resultados</small>
+        </button>
+        <button class="btn btn-500" onclick="exportar(500)">
+          <span>500</span>
+          <small>resultados</small>
+        </button>
+        <button class="btn btn-1000" onclick="exportar(1000)">
+          <span>1000</span>
+          <small>resultados</small>
+        </button>
+        <button class="btn btn-2000" onclick="exportar(2000)">
+          <span>2000</span>
+          <small>resultados</small>
+        </button>
+      </div>
+
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div class="card padrao-x">
+      <h2>🎯 Padrão X — Previsão do Branco</h2>
+      <div id="padraoXContent">
+        <p style="color:#7c8ca5;font-size:13px;padding:10px">Busque dados primeiro para ativar a previsão.</p>
+      </div>
+      <button class="btn-refresh" onclick="carregarPadraoX()">🔄 Atualizar Previsão</button>
+    </div>
+
+    <div class="card">
+      <h2>📁 Arquivos Gerados</h2>
+      <button class="btn-open" onclick="abrirPasta()">📂 Abrir Pasta no Explorador</button>
+      <div class="arquivos-list" id="listaArquivos">
+        <p style="color:#7c8ca5;font-size:13px;padding:10px">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let exportando = false;
+
+    async function exportar(limit) {
+      if (exportando) return;
+      exportando = true;
+
+      const btns = document.querySelectorAll('.btn');
+      btns.forEach(b => b.disabled = true);
+
+      const fb = document.getElementById('feedback');
+      fb.className = 'feedback loading';
+      fb.innerHTML = `<h3><span class="spinner"></span> Buscando ${limit} resultados...</h3><p>Aguarde, conectando ao TipMiner e gerando Excel...</p>`;
+
+      try {
+        const resp = await fetch('/api/exportar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit })
+        });
+        const data = await resp.json();
+
+        if (data.erro) {
+          fb.className = 'feedback erro';
+          fb.innerHTML = `<h3>❌ Erro</h3><p>${data.erro}</p>`;
+        } else {
+          fb.className = 'feedback sucesso';
+          fb.innerHTML = `
+            <h3>✅ ${data.mensagem}</h3>
+            <p>Arquivo: <strong>${data.arquivo}</strong></p>
+            <div class="path">📄 ${data.caminho}</div>
+            <button class="btn-open" onclick="abrirPasta()" style="margin-top:10px">📂 Abrir Pasta</button>
+          `;
+          carregarArquivos();
+        }
+      } catch (e) {
+        fb.className = 'feedback erro';
+        fb.innerHTML = `<h3>❌ Erro de conexão</h3><p>${e.message}</p>`;
+      }
+
+      exportando = false;
+      btns.forEach(b => b.disabled = false);
+    }
+
+    async function abrirPasta() {
+      await fetch('/api/abrir-pasta', { method: 'POST' });
+    }
+
+    async function carregarArquivos() {
+      try {
+        const resp = await fetch('/api/arquivos');
+        const arquivos = await resp.json();
+        const el = document.getElementById('listaArquivos');
+        if (arquivos.length === 0) {
+          el.innerHTML = '<p style="color:#7c8ca5;font-size:13px;padding:10px">Nenhum arquivo gerado ainda.</p>';
+        } else {
+          el.innerHTML = arquivos.map(a => `
+            <div class="arquivo-item">
+              <span class="arquivo-nome">📄 ${a.nome}</span>
+              <span class="arquivo-info">${a.tamanho} • ${a.data}</span>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        document.getElementById('listaArquivos').innerHTML = '<p style="color:#ff5667;font-size:13px;padding:10px">Erro ao carregar lista.</p>';
+      }
+    }
+
+    // Carregar lista ao abrir
+    carregarArquivos();
+
+    // ========== PADRÃO X ==========
+    async function carregarPadraoX() {
+      const el = document.getElementById('padraoXContent');
+      try {
+        const resp = await fetch('/api/padrao-x');
+        const d = await resp.json();
+
+        if (d.erro) {
+          el.innerHTML = `<p style="color:#ff5667;font-size:13px;padding:10px">⚠️ ${d.erro}</p>`;
+          return;
+        }
+
+        const statusClass = `status-${d.previsao.status}`;
+        const statusText = {
+          aguardando: '⏳ Aguardando',
+          iminente: '🔥 Iminente',
+          atrasado: '⚠️ Atrasado',
+          expirado: '💀 Expirado'
+        }[d.previsao.status] || d.previsao.status;
+
+        const confColor = d.confianca > 65 ? '#00ff95' : d.confianca > 40 ? '#ffcc4d' : '#ff5667';
+
+        let sinaisHtml = '';
+        if (d.sinais.bloqueadoresVistos.length > 0) {
+          sinaisHtml += d.sinais.bloqueadoresVistos.map(n => `<span class="sinal-tag sinal-bloq">⚠️ Nº${n}</span>`).join('');
+        }
+        if (d.sinais.favoraveisVistos.length > 0) {
+          sinaisHtml += d.sinais.favoraveisVistos.map(n => `<span class="sinal-tag sinal-fav">✓ Nº${n}</span>`).join('');
+        }
+        if (d.sinais.padraoAlerta) {
+          sinaisHtml += `<span class="sinal-tag sinal-alerta">Padrão ${d.sinais.padraoCores}</span>`;
+        }
+        if (d.sinais.padraoBom) {
+          sinaisHtml += `<span class="sinal-tag sinal-fav">✅ Padrão ${d.sinais.padraoCores}</span>`;
+        }
+        if (d.sinais.bloqueadorExato) {
+          sinaisHtml += `<span class="sinal-tag sinal-bloq">❌ Nº${d.sinais.numNaPosPrevisao} na pos. exata</span>`;
+        }
+        if (d.sinais.favoravelExato) {
+          sinaisHtml += `<span class="sinal-tag sinal-fav">✅ Nº${d.sinais.numNaPosPrevisao} na pos. exata</span>`;
+        }
+
+        let histHtml = '';
+        if (d.historico && d.historico.length > 0) {
+          histHtml = `<div class="historico-mini"><h4>Últimas previsões</h4>` +
+            d.historico.map(h => `
+              <div class="hist-row">
+                <span class="${h.acertou ? 'hist-acerto' : 'hist-erro'}">${h.acertou ? '✓' : '✗'}</span>
+                <span>Branco ${h.hora}</span>
+                <span style="color:#7c8ca5">N1=${h.n1} N2=${h.n2}</span>
+                <span style="color:#7c8ca5">prev=${h.previsao} real=${h.real}</span>
+              </div>
+            `).join('') + `</div>`;
+        }
+
+        el.innerHTML = `
+          <div class="previsao-box">
+            <div class="previsao-status">
+              <span class="status-badge ${statusClass}">${statusText}</span>
+              <span style="font-size:12px;color:#7c8ca5">Último branco: ${d.ultimoBranco.hora} (${d.ultimoBranco.rodadasAtras} rodadas atrás)</span>
+            </div>
+
+            <div class="previsao-info">
+              <div class="info-item">
+                <label>Fórmula MAX(N1,N2)</label>
+                <span style="color:#ffcc4d">${d.formula.resultado}</span>
+              </div>
+              <div class="info-item">
+                <label>Rodadas restantes</label>
+                <span style="color:${d.previsao.rodadasRestantes <= 3 ? '#ff5667' : '#4cc9ff'}">${d.previsao.rodadasRestantes}</span>
+              </div>
+              <div class="info-item">
+                <label>N1 (2º antes)</label>
+                <span style="color:${d.formula.cor1 === 'Vermelho' ? '#ff5667' : '#4cc9ff'}">${d.formula.n1}</span>
+              </div>
+              <div class="info-item">
+                <label>N2 (3º antes)</label>
+                <span style="color:${d.formula.cor2 === 'Vermelho' ? '#ff5667' : '#4cc9ff'}">${d.formula.n2}</span>
+              </div>
+            </div>
+
+            <div class="confianca-bar">
+              <div class="confianca-fill" style="width:${d.confianca}%;background:${confColor}"></div>
+            </div>
+            <div class="confianca-label">
+              <span>Confiança</span>
+              <span style="color:${confColor};font-weight:700">${d.confianca}%</span>
+            </div>
+
+            ${sinaisHtml ? `<div style="margin-top:12px"><span style="font-size:12px;color:#7c8ca5">Sinais detectados:</span><div class="sinais-grid">${sinaisHtml}</div></div>` : ''}
+
+            <div class="dica-box">💡 ${d.dica}</div>
+
+            ${histHtml}
+          </div>
+        `;
+      } catch (e) {
+        el.innerHTML = `<p style="color:#ff5667;font-size:13px;padding:10px">Erro: ${e.message}</p>`;
+      }
+    }
+
+    // Auto-refresh Padrão X a cada 30s
+    setInterval(carregarPadraoX, 30000);
+    // Carregar ao abrir
+    carregarPadraoX();
+  </script>
+</body>
+</html>
