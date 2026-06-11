@@ -440,6 +440,7 @@ body {
 }
 .resultado-item {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
+  position: relative;
 }
 .resultado-ball {
   width: 42px; height: 42px; border-radius: 50%;
@@ -452,9 +453,27 @@ body {
 .resultado-ball.cor-branco { background: #ffffff; color: #111; border: 2px solid #d1d5db; box-shadow: 0 0 12px rgba(255,255,255,.4); }
 .resultado-hora { font-size: 9px; color: var(--text-soft); font-weight: 500; }
 
+/* Marcações de previsão */
+.marcacao-badge {
+  font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 4px;
+  white-space: nowrap; line-height: 1.2; text-align: center;
+}
+.marcacao-green { background: rgba(34,197,94,.15); color: var(--green); }
+.marcacao-red { background: rgba(239,68,68,.15); color: var(--red); }
+.marcacao-miss { background: rgba(239,68,68,.1); color: var(--red); font-size: 10px; }
+.marcacao-near { background: rgba(34,197,94,.1); color: var(--green); font-size: 10px; }
+.marcacao-ativa { background: rgba(245,158,11,.15); color: var(--yellow); font-size: 10px; animation: blink 1.5s infinite; }
+
+.resultado-marcado { position: relative; }
+.resultado-item.marcado-green .resultado-ball { box-shadow: 0 0 10px rgba(34,197,94,.6); border: 2px solid var(--green); }
+.resultado-item.marcado-red .resultado-ball { box-shadow: 0 0 10px rgba(239,68,68,.5); border: 2px solid var(--red); }
+.resultado-item.marcado-ativa .resultado-ball { box-shadow: 0 0 12px rgba(245,158,11,.5); border: 2px solid var(--yellow); animation: blink 1.5s infinite; }
+.resultado-item.marcado-miss .resultado-ball { box-shadow: 0 0 8px rgba(239,68,68,.3); border: 2px dashed var(--red); }
+
 @media (max-width: 768px) {
   .resultado-ball { width: 36px; height: 36px; font-size: 12px; }
   .resultados-grid { gap: 4px; }
+  .marcacao-badge { font-size: 7px; }
 }
 
 /* Bot responsivo */

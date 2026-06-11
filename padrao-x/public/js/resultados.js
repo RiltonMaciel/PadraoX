@@ -1,6 +1,26 @@
 // Últimos Resultados — auto-refresh a cada 10s
 let _resultadosTimer = null;
 
+function renderMarcacao(m) {
+  if (!m) return '';
+  if (m.tipo === 'branco-real' && m.acertou) {
+    return `<span class="marcacao-badge marcacao-green" title="Previu ${m.previsto} rod. | Real: ${m.real} | Erro: ${m.erro > 0 ? '+' : ''}${m.erro}">✅ ${m.horaPrev}</span>`;
+  }
+  if (m.tipo === 'branco-real' && !m.acertou) {
+    return `<span class="marcacao-badge marcacao-red" title="Previu ${m.previsto} rod. | Real: ${m.real} | Erro: ${m.erro > 0 ? '+' : ''}${m.erro}">❌ ${m.horaPrev}</span>`;
+  }
+  if (m.tipo === 'previsao-errou') {
+    return `<span class="marcacao-badge marcacao-miss" title="Previsão apontava aqui (${m.previsto} rod.) mas branco veio em ${m.real}">🎯</span>`;
+  }
+  if (m.tipo === 'previsao-proxima') {
+    return `<span class="marcacao-badge marcacao-near" title="Previsão era aqui, branco saiu perto">🎯</span>`;
+  }
+  if (m.tipo === 'previsao-ativa') {
+    return `<span class="marcacao-badge marcacao-ativa" title="Previsão ativa! Branco esperado aqui">⏳</span>`;
+  }
+  return '';
+}
+
 async function carregarUltimosResultados(limit) {
   limit = limit || 50;
   const el = document.getElementById('ultimosResultadosContent');
@@ -20,7 +40,15 @@ async function carregarUltimosResultados(limit) {
 
     const html = '<div class="resultados-grid">' + d.resultados.map(r => {
       const cls = r.cor === 'branco' ? 'cor-branco' : r.cor === 'vermelho' ? 'cor-vermelho' : 'cor-preto';
-      return `<div class="resultado-item"><div class="resultado-ball ${cls}">${r.num}</div><span class="resultado-hora">${r.hora}</span></div>`;
+      const marcacao = renderMarcacao(r.marcacao);
+      const extraClass = r.marcacao ? ' resultado-marcado' : '';
+      const borderClass = r.marcacao
+        ? (r.marcacao.tipo === 'branco-real' && r.marcacao.acertou ? ' marcado-green'
+          : r.marcacao.tipo === 'branco-real' && !r.marcacao.acertou ? ' marcado-red'
+          : r.marcacao.tipo === 'previsao-ativa' ? ' marcado-ativa'
+          : r.marcacao.tipo === 'previsao-errou' ? ' marcado-miss'
+          : '') : '';
+      return `<div class="resultado-item${extraClass}${borderClass}">${marcacao}<div class="resultado-ball ${cls}">${r.num}</div><span class="resultado-hora">${r.hora}</span></div>`;
     }).join('') + '</div>';
 
     setHTML(el, html);

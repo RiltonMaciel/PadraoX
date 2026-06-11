@@ -132,14 +132,87 @@ router.get('/ultimos-resultados', (req, res) => {
     return res.json({ erro: 'Sem dados', resultados: [], total: 0 });
   }
 
+  // Encontrar brancos e calcular previsões para marcar no painel
+  const idxBrancos = [];
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] === 0) idxBrancos.push(i);
+  }
+
+  // Para cada branco, calcular onde era a previsão (posição prevista)
+  // e marcar se acertou ou errou
+  const marcacoes = new Map(); // idx -> { tipo, info }
+
+  for (let b = 0; b < idxBrancos.length; b++) {
+    const idx = idxBrancos[b];
+    const p1 = idx - 2, p2 = idx - 3;
+    if (p2 < 0) continue;
+    const a = nums[p1], c = nums[p2];
+    if (a === 0 || c === 0) continue;
+    const prev = Math.max(a, c);
+
+    // Posição onde o branco ERA previsto
+    const posAlvo = idx + prev;
+
+    // Próximo branco real
+    const proxBrancoIdx = b < idxBrancos.length - 1 ? idxBrancos[b + 1] : null;
+
+    if (proxBrancoIdx !== null) {
+      const real = proxBrancoIdx - idx;
+      const erro = Math.abs(real - prev);
+      const acertou = erro <= 3;
+
+      // Marcar a posição do branco real
+      marcacoes.set(proxBrancoIdx, {
+        tipo: 'branco-real',
+        acertou,
+        previsto: prev,
+        real,
+        erro: real - prev,
+        horaPrev: horas[Math.min(posAlvo, nums.length - 1)] || '--:--'
+      });
+
+      // Marcar a posição onde ERA previsto (se diferente do branco real)
+      if (posAlvo < nums.length && posAlvo !== proxBrancoIdx) {
+        marcacoes.set(posAlvo, {
+          tipo: acertou ? 'previsao-proxima' : 'previsao-errou',
+          previsto: prev,
+          real,
+          alvo: true,
+          horaPrev: horas[posAlvo] || '--:--'
+        });
+      }
+    }
+  }
+
+  // Marcar previsão ativa (próximo branco esperado)
+  if (idxBrancos.length >= 1) {
+    const ultimoIdx = idxBrancos[idxBrancos.length - 1];
+    const pp1 = ultimoIdx - 2, pp2 = ultimoIdx - 3;
+    if (pp2 >= 0 && nums[pp1] !== 0 && nums[pp2] !== 0) {
+      const prevAtual = Math.max(nums[pp1], nums[pp2]);
+      const posAlvoAtual = ultimoIdx + prevAtual;
+      if (posAlvoAtual < nums.length) {
+        marcacoes.set(posAlvoAtual, {
+          tipo: 'previsao-ativa',
+          previsto: prevAtual,
+          rodadasRestantes: posAlvoAtual - (nums.length - 1)
+        });
+      }
+    }
+  }
+
   const startIdx = Math.max(0, nums.length - limit);
   const resultados = [];
   for (let i = nums.length - 1; i >= startIdx; i--) {
-    resultados.push({
+    const item = {
       num: nums[i],
       cor: nums[i] === 0 ? 'branco' : nums[i] <= 7 ? 'vermelho' : 'preto',
       hora: horas[i] || '--:--'
-    });
+    };
+    if (marcacoes.has(i)) {
+      item.marcacao = marcacoes.get(i);
+    }
+    resultados.push(item);
   }
 
   res.json({
