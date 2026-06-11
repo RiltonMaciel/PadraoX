@@ -24,7 +24,7 @@ const botState = {
   totalRed: 0,
   lucroTotal: 0,
   // Auto-bet tracking
-  apostaAberta: null // { posicao, stake, timestamp, rodadasParaVerificar }
+  apostaAberta: null // { fingerprint, stake, timestamp, rodadasVistas, rodadasParaVerificar }
 };
 
 // Perfis
@@ -141,22 +141,45 @@ function analisarBot() {
   // === AUTO-RESOLUÇÃO DE APOSTA ABERTA ===
   if (botState.apostaAberta && state.historicoGlobal.length > 0) {
     const aposta = botState.apostaAberta;
-    const posAtual = state.historicoGlobal.length;
-    const rodadasDesdeAposta = posAtual - aposta.posicao;
+    const currentEnd = state.historicoGlobal.slice(-5).join(',');
 
-    if (rodadasDesdeAposta > 0) {
-      // Verificar se branco apareceu nas rodadas desde a aposta
-      const rodadasNovas = state.historicoGlobal.slice(aposta.posicao);
-      const brancoApareceu = rodadasNovas.includes(0);
+    // Detectar se houve mudança nos dados desde a aposta
+    if (currentEnd !== aposta.fingerprint) {
+      // Dados mudaram! Encontrar quantas rodadas novas surgiram
+      const fp = aposta.fingerprint.split(',').map(Number);
+      let matchIdx = -1;
 
-      if (brancoApareceu) {
-        // GREEN! Branco saiu — lucro 13x stake
-        registrarResultado('green');
-      } else if (rodadasDesdeAposta >= aposta.rodadasParaVerificar) {
-        // RED — branco não saiu no prazo
-        registrarResultado('red');
+      // Procurar onde o fingerprint antigo está no array atual
+      for (let i = state.historicoGlobal.length - 6; i >= Math.max(0, state.historicoGlobal.length - 50); i--) {
+        const slice = state.historicoGlobal.slice(i, i + 5);
+        if (slice.join(',') === aposta.fingerprint) {
+          matchIdx = i;
+          break;
+        }
       }
-      // Se ainda não atingiu rodadasParaVerificar, mantém aposta aberta
+
+      if (matchIdx >= 0) {
+        // Rodadas novas = tudo depois do fingerprint
+        const rodadasNovas = state.historicoGlobal.slice(matchIdx + 5);
+        const rodadasDesdeAposta = rodadasNovas.length;
+        const brancoApareceu = rodadasNovas.includes(0);
+
+        if (brancoApareceu) {
+          // GREEN! Branco saiu
+          resolverAposta('green');
+        } else if (rodadasDesdeAposta >= aposta.rodadasParaVerificar) {
+          // RED — branco não saiu no prazo
+          resolverAposta('red');
+        } else {
+          // Atualizar contagem
+          aposta.rodadasVistas = rodadasDesdeAposta;
+        }
+      } else {
+        // Fingerprint não encontrado (muitas rodadas passaram) — resolver como red
+        if (Date.now() - aposta.timestamp > 4 * 60 * 1000) {
+          resolverAposta('red');
+        }
+      }
     }
   }
 
@@ -189,7 +212,7 @@ function analisarBot() {
     pensamento = 'Chega por hoje. O stop-loss existe pra me proteger. Amanhã eu volto.';
   } else if (botState.apostaAberta) {
     // Tem aposta aberta — aguardando resultado
-    const rodadasEsperando = state.historicoGlobal.length - botState.apostaAberta.posicao;
+    const rodadasEsperando = botState.apostaAberta.rodadasVistas || 0;
     decisao = 'apostando';
     stake = botState.apostaAberta.stake;
     emocao = 'ansioso';
@@ -255,9 +278,10 @@ function analisarBot() {
   // === AUTO-COLOCAR APOSTA ===
   if (decisao === 'apostar' && !botState.apostaAberta && stake > 0) {
     botState.apostaAberta = {
-      posicao: state.historicoGlobal.length,
+      fingerprint: state.historicoGlobal.slice(-5).join(','),
       stake,
       timestamp: Date.now(),
+      rodadasVistas: 0,
       rodadasParaVerificar: 8 // aguarda até 8 rodadas para branco sair
     };
   }
@@ -316,7 +340,7 @@ function analisarBot() {
     },
     apostaAberta: botState.apostaAberta ? {
       stake: botState.apostaAberta.stake,
-      rodadasEsperando: state.historicoGlobal.length - botState.apostaAberta.posicao,
+      rodadasEsperando: botState.apostaAberta.rodadasVistas || 0,
       rodadasMax: botState.apostaAberta.rodadasParaVerificar
     } : null,
     historico: botState.historico.slice(-20).reverse(),
@@ -325,11 +349,59 @@ function analisarBot() {
   };
 }
 
-// Simular resultado de uma aposta (chamado quando sai branco ou não)
+// Resolver aposta internamente (chamado pela auto-resolução dentro de analisarBot)
+function resolverAposta(tipo) {
+  const agora = new Date();
+  const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const stake = botState.apostaAberta?.stake || botState.ultimaDecisao?.stake || 5;
+
+  if (tipo === 'green') {
+    const lucro = stake * 13;
+    botState.banca += lucro;
+    botState.totalGreen++;
+    botState.sequenciaLoss = 0;
+    botState.galeAtivo = false;
+    botState.galeNivel = 0;
+    botState.lucroTotal += lucro;
+    botState.historico.push({
+      hora, tipo: 'green', valor: lucro,
+      frase: fraseAleatoria('euforia'),
+      stake,
+      timestamp: Date.now()
+    });
+  } else if (tipo === 'red') {
+    botState.banca -= stake;
+    botState.totalRed++;
+    botState.sequenciaLoss++;
+    botState.lucroTotal -= stake;
+
+    const perfil = PERFIS[botState.perfil];
+    if (botState.galeNivel < perfil.galeMax) {
+      botState.galeAtivo = true;
+      botState.galeNivel++;
+    } else {
+      botState.galeAtivo = false;
+      botState.galeNivel = 0;
+    }
+
+    const emocaoRed = botState.sequenciaLoss >= 2 ? 'raiva' : 'triste';
+    botState.historico.push({
+      hora, tipo: 'red', valor: -stake,
+      frase: fraseAleatoria(emocaoRed),
+      stake,
+      galeProximo: botState.galeAtivo,
+      timestamp: Date.now()
+    });
+  }
+
+  botState.apostaAberta = null;
+}
+
+// Simular resultado de uma aposta (chamado manualmente via API)
 function registrarResultado(tipo) {
   const agora = new Date();
   const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-  const stake = botState.ultimaDecisao?.stake || 5;
+  const stake = botState.apostaAberta?.stake || botState.ultimaDecisao?.stake || 5;
 
   if (tipo === 'green') {
     // Branco paga 14x: lucro líquido = stake × 13 (recebe 14x menos o que apostou)
