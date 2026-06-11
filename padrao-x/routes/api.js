@@ -122,6 +122,34 @@ router.get('/status', (req, res) => {
   });
 });
 
+// GET /api/ultimos-resultados?limit=50
+router.get('/ultimos-resultados', (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 10), 5000);
+  const nums = state.historicoGlobal;
+  const horas = state.horariosGlobal;
+
+  if (nums.length === 0) {
+    return res.json({ erro: 'Sem dados', resultados: [], total: 0 });
+  }
+
+  const startIdx = Math.max(0, nums.length - limit);
+  const resultados = [];
+  for (let i = nums.length - 1; i >= startIdx; i--) {
+    resultados.push({
+      num: nums[i],
+      cor: nums[i] === 0 ? 'branco' : nums[i] <= 7 ? 'vermelho' : 'preto',
+      hora: horas[i] || '--:--'
+    });
+  }
+
+  res.json({
+    resultados,
+    total: nums.length,
+    exibindo: resultados.length,
+    ultimaBusca: state.ultimaBusca
+  });
+});
+
 // ========== BOT ==========
 
 // GET /api/bot-status

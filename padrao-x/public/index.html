@@ -128,6 +128,20 @@
         </div>
       </div>
 
+      <!-- ÚLTIMOS RESULTADOS -->
+      <div class="card" style="margin-top:20px; border-color: rgba(245,158,11,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:var(--yellow);">🎰 Últimos Resultados</h3>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="resultadosCount" style="font-size:11px;color:var(--text-soft);">0 resultados</span>
+            <button onclick="abrirModalResultados()" style="background:rgba(245,158,11,.12);color:var(--yellow);border:1px solid rgba(245,158,11,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">📊 Mostrar mais</button>
+          </div>
+        </div>
+        <div id="ultimosResultadosContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Carregando resultados...</p>
+        </div>
+      </div>
+
       <div class="card" style="margin-top:20px; border-color: rgba(91,92,255,.3);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <h3 style="font-size:16px; color:var(--primary, #5b5cff);">🤖 Bot Apostador — Banca Fictícia</h3>
@@ -140,6 +154,30 @@
     </div>
 
   </main>
+
+  <!-- MODAL RESULTADOS -->
+  <div id="modalResultados" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;max-width:900px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="font-size:18px;color:var(--yellow);">🎰 Resultados Completos</h3>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <label style="font-size:12px;color:var(--text-soft);">Quantidade:</label>
+          <select id="modalResultadosQtd" onchange="carregarResultadosModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-weight:600;">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+            <option value="2000">2000</option>
+            <option value="5000">5000</option>
+          </select>
+          <button onclick="fecharModalResultados()" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✕ Fechar</button>
+        </div>
+      </div>
+      <div id="modalResultadosContent" style="padding:20px 24px;overflow-y:auto;flex:1;">
+        <p style="color:var(--text-soft);font-size:13px;">Carregando...</p>
+      </div>
+    </div>
+  </div>
 
   <div id="modalNome" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
     <div style="background:var(--card);padding:36px;border-radius:20px;border:1px solid var(--border);max-width:360px;width:90%;text-align:center;">
@@ -170,6 +208,7 @@
   <script src="/js/cadeia.js"></script>
   <script src="/js/tempo.js"></script>
   <script src="/js/rec.js"></script>
+  <script src="/js/resultados.js"></script>
   <script src="/js/bot.js"></script>
   <script src="/js/chat.js"></script>
   <script src="/js/app.js"></script>

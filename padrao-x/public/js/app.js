@@ -22,4 +22,5 @@ setInterval(() => {
 document.addEventListener('DOMContentLoaded', () => {
   initChat();
   atualizarTudo();
+  iniciarRefreshResultados();
 });

@@ -434,6 +434,29 @@ body {
 }
 .bot-historico-title { font-size: 13px; color: var(--text-soft); font-weight: 700; margin-bottom: 8px; }
 
+/* Últimos Resultados */
+.resultados-grid {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start;
+}
+.resultado-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.resultado-ball {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; transition: .2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.resultado-ball.cor-vermelho { background: var(--red); color: white; }
+.resultado-ball.cor-preto { background: #1e293b; color: white; border: 2px solid #334155; }
+.resultado-ball.cor-branco { background: #ffffff; color: #111; border: 2px solid #d1d5db; box-shadow: 0 0 12px rgba(255,255,255,.4); }
+.resultado-hora { font-size: 9px; color: var(--text-soft); font-weight: 500; }
+
+@media (max-width: 768px) {
+  .resultado-ball { width: 36px; height: 36px; font-size: 12px; }
+  .resultados-grid { gap: 4px; }
+}
+
 /* Bot responsivo */
 @media (max-width: 768px) {
   .bot-main-area { flex-direction: column; align-items: center; gap: 16px; }
