@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blaze Excel Exporter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #050816;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at top left, #0b2a5a55, transparent 30%),
+        radial-gradient(circle at bottom right, #00d2ff22, transparent 25%);
+      z-index: -1;
+    }
+    .container {
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 32px;
+      color: #20c9ff;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+    .subtitle {
+      color: #7c8ca5;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: linear-gradient(180deg, #0b1224, #0a1020);
+      border: 1px solid #1b2a4d;
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.45);
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 18px;
+      color: #dce9ff;
+      margin-bottom: 20px;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .btn {
+      border: none;
+      padding: 18px 24px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,.4); }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-200 { background: #0f2d4d; color: #4cc9ff; border: 1px solid #17456f; }
+    .btn-500 { background: #0f2d1a; color: #00ff95; border: 1px solid #174f27; }
+    .btn-1000 { background: #2d2a0f; color: #ffcc4d; border: 1px solid #4f4517; }
+    .btn-2000 { background: #2d0f1a; color: #ff5667; border: 1px solid #4f1727; }
+    .btn span { font-size: 28px; font-weight: 800; }
+    .btn small { font-size: 12px; opacity: 0.7; }
+
+    /* FEEDBACK */
+    .feedback {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 16px;
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .feedback.sucesso {
+      display: block;
+      background: rgba(0,255,149,.08);
+      border: 1px solid rgba(0,255,149,.3);
+      color: #00ff95;
+    }
+    .feedback.erro {
+      display: block;
+      background: rgba(255,86,103,.08);
+      border: 1px solid rgba(255,86,103,.3);
+      color: #ff5667;
+    }
+    .feedback.loading {
+      display: block;
+      background: rgba(76,201,255,.08);
+      border: 1px solid rgba(76,201,255,.3);
+      color: #4cc9ff;
+    }
+    .feedback h3 { margin-bottom: 6px; font-size: 15px; }
+    .feedback p { font-size: 13px; opacity: 0.85; word-break: break-all; }
+    .feedback .path { font-family: monospace; font-size: 12px; margin-top: 8px; background: rgba(0,0,0,.3); padding: 8px 12px; border-radius: 8px; }
+
+    .btn-open {
+      margin-top: 12px;
+      background: #1b2a4d;
+      color: #4cc9ff;
+      border: 1px solid #17456f;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-open:hover { background: #243a5f; }
+
+    /* LISTA DE ARQUIVOS */
+    .arquivos-list {
+      margin-top: 14px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .arquivo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #1b2a4d;
+      font-size: 13px;
+    }
+    .arquivo-item:last-child { border-bottom: none; }
+    .arquivo-nome { color: #4cc9ff; font-weight: 500; }
+    .arquivo-info { color: #7c8ca5; font-size: 11px; }
+
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(76,201,255,.3);
+      border-top-color: #4cc9ff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Blaze Excel Exporter</h1>
+    <p class="subtitle">Exporte resultados do Blaze Double direto para Excel</p>
+
+    <div class="card">
+      <h2>Selecione a quantidade de resultados</h2>
+      <div class="btn-grid">
+        <button class="btn btn-200" onclick="exportar(200)">
+          <span>200</span>
+          <small>resultados</small>
+        </button>
+        <button class="btn btn-500" onclick="exportar(500)">
+          <span>500</span>
+          <small>resultados</small>
+        </button>
+        <button class="btn btn-1000" onclick="exportar(1000)">
+          <span>1000</span>
+          <small>resultados</small>
+        </button>
+        <button class="btn btn-2000" onclick="exportar(2000)">
+          <span>2000</span>
+          <small>resultados</small>
+        </button>
+      </div>
+
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div class="card">
+      <h2>📁 Arquivos Gerados</h2>
+      <button class="btn-open" onclick="abrirPasta()">📂 Abrir Pasta no Explorador</button>
+      <div class="arquivos-list" id="listaArquivos">
+        <p style="color:#7c8ca5;font-size:13px;padding:10px">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let exportando = false;
+
+    async function exportar(limit) {
+      if (exportando) return;
+      exportando = true;
+
+      const btns = document.querySelectorAll('.btn');
+      btns.forEach(b => b.disabled = true);
+
+      const fb = document.getElementById('feedback');
+      fb.className = 'feedback loading';
+      fb.innerHTML = `<h3><span class="spinner"></span> Buscando ${limit} resultados...</h3><p>Aguarde, conectando ao TipMiner e gerando Excel...</p>`;
+
+      try {
+        const resp = await fetch('/api/exportar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit })
+        });
+        const data = await resp.json();
+
+        if (data.erro) {
+          fb.className = 'feedback erro';
+          fb.innerHTML = `<h3>❌ Erro</h3><p>${data.erro}</p>`;
+        } else {
+          fb.className = 'feedback sucesso';
+          fb.innerHTML = `
+            <h3>✅ ${data.mensagem}</h3>
+            <p>Arquivo: <strong>${data.arquivo}</strong></p>
+            <div class="path">📄 ${data.caminho}</div>
+            <button class="btn-open" onclick="abrirPasta()" style="margin-top:10px">📂 Abrir Pasta</button>
+          `;
+          carregarArquivos();
+        }
+      } catch (e) {
+        fb.className = 'feedback erro';
+        fb.innerHTML = `<h3>❌ Erro de conexão</h3><p>${e.message}</p>`;
+      }
+
+      exportando = false;
+      btns.forEach(b => b.disabled = false);
+    }
+
+    async function abrirPasta() {
+      await fetch('/api/abrir-pasta', { method: 'POST' });
+    }
+
+    async function carregarArquivos() {
+      try {
+        const resp = await fetch('/api/arquivos');
+        const arquivos = await resp.json();
+        const el = document.getElementById('listaArquivos');
+        if (arquivos.length === 0) {
+          el.innerHTML = '<p style="color:#7c8ca5;font-size:13px;padding:10px">Nenhum arquivo gerado ainda.</p>';
+        } else {
+          el.innerHTML = arquivos.map(a => `
+            <div class="arquivo-item">
+              <span class="arquivo-nome">📄 ${a.nome}</span>
+              <span class="arquivo-info">${a.tamanho} • ${a.data}</span>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        document.getElementById('listaArquivos').innerHTML = '<p style="color:#ff5667;font-size:13px;padding:10px">Erro ao carregar lista.</p>';
+      }
+    }
+
+    // Carregar lista ao abrir
+    carregarArquivos();
+  </script>
+</body>
+</html>

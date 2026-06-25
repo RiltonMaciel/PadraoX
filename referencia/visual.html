@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Motor Adaptativo - Blaze Double</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+    }
+
+    body{
+      font-family:'Inter',sans-serif;
+      background:#050816;
+      color:#fff;
+      padding:24px;
+      overflow-x:hidden;
+    }
+
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      background:
+      radial-gradient(circle at top left,#0b2a5a55,transparent 30%),
+      radial-gradient(circle at bottom right,#00d2ff22,transparent 25%);
+      z-index:-1;
+    }
+
+    .container{
+      max-width:1800px;
+      margin:auto;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:24px;
+    }
+
+    .title h1{
+      font-size:36px;
+      color:#20c9ff;
+      font-weight:800;
+    }
+
+    .title p{
+      color:#7c8ca5;
+      margin-top:6px;
+    }
+
+    .status{
+      background:#0d1427;
+      border:1px solid #1d315c;
+      padding:16px 22px;
+      border-radius:18px;
+      display:flex;
+      gap:14px;
+      align-items:center;
+      box-shadow:0 0 25px #0b6fff14;
+    }
+
+    .online{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:#00ff95;
+      box-shadow:0 0 10px #00ff95;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:1.3fr 1fr;
+      gap:22px;
+      margin-bottom:22px;
+    }
+
+    .card{
+      background:linear-gradient(180deg,#0b1224,#0a1020);
+      border:1px solid #1b2a4d;
+      border-radius:24px;
+      padding:24px;
+      box-shadow:
+      0 10px 40px rgba(0,0,0,.45),
+      inset 0 1px 0 rgba(255,255,255,.03);
+    }
+
+    .card-title{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:22px;
+    }
+
+    .card-title h2{
+      font-size:20px;
+      color:#dce9ff;
+    }
+
+    .badge{
+      background:#0f2d4d;
+      color:#4cc9ff;
+      border:1px solid #17456f;
+      padding:8px 14px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:600;
+    }
+
+    .signal-box{
+      text-align:center;
+      padding:32px;
+      border-radius:22px;
+      border:1px solid #1c4f7a;
+      background:linear-gradient(180deg,#071322,#09192b);
+    }
+
+    .signal-box h3{
+      font-size:38px;
+      color:#2ec8ff;
+      margin-bottom:14px;
+      font-weight:800;
+    }
+
+    .signal-box p{
+      color:#8da5c7;
+      font-size:18px;
+    }
+
+    .score{
+      margin-top:28px;
+      font-size:90px;
+      font-weight:800;
+      color:#ff4d5e;
+      text-shadow:0 0 25px rgba(255,77,94,.4);
+    }
+
+    .metrics{
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      gap:16px;
+      margin-top:24px;
+    }
+
+    .metric{
+      background:#09101f;
+      border:1px solid #16294d;
+      border-radius:18px;
+      padding:18px;
+      text-align:center;
+    }
+
+    .metric h4{
+      color:#27d3ff;
+      font-size:28px;
+      margin-bottom:8px;
+    }
+
+    .metric span{
+      color:#7f92b0;
+      font-size:14px;
+    }
+
+    .bottom{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:22px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
+
+    th{
+      color:#5ecfff;
+      font-weight:600;
+      text-align:left;
+      padding-bottom:18px;
+      font-size:14px;
+    }
+
+    td{
+      padding:14px 0;
+      border-top:1px solid #12203b;
+      color:#d9e7ff;
+      font-size:14px;
+    }
+
+    .success{
+      color:#00ff95;
+      font-weight:700;
+    }
+
+    .danger{
+      color:#ff5667;
+      font-weight:700;
+    }
+
+    .warning{
+      color:#ffcc4d;
+      font-weight:700;
+    }
+
+    .numbers{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:20px;
+    }
+
+    .ball{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      font-size:15px;
+      border:2px solid transparent;
+      background:#131c31;
+      color:#fff;
+    }
+
+    .red{
+      background:#c53a46;
+    }
+
+    .white{
+      background:#f5f5f5;
+      color:#111;
+    }
+
+    .black{
+      background:#232734;
+    }
+
+    .green-border{
+      border-color:#00ff95;
+      box-shadow:0 0 18px rgba(0,255,149,.25);
+    }
+
+    .yellow-border{
+      border-color:#ffb700;
+      box-shadow:0 0 18px rgba(255,183,0,.25);
+    }
+
+    canvas{
+      height:320px !important;
+    }
+
+    @media(max-width:1200px){
+
+      .grid,
+      .bottom{
+        grid-template-columns:1fr;
+      }
+
+      .metrics{
+        grid-template-columns:repeat(2,1fr);
+      }
+
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="topbar">
+
+    <div class="title">
+      <h1>Motor Adaptativo - Blaze Double</h1>
+      <p>Motor v7 — Pares Condicionais + Gatilhos + Veto | Validado: 16.7k jogos</p>
+    </div>
+
+    <div class="status">
+      <div class="online"></div>
+      <div>
+        <strong>Sistema On-line</strong>
+        <p style="color:#8190aa;font-size:13px;">Atualizado agora</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+
+      <div class="card-title">
+        <h2>Temperatura do Motor</h2>
+        <div class="badge">ESFRIANDO</div>
+      </div>
+
+      <canvas id="chart"></canvas>
+
+      <div class="metrics">
+
+        <div class="metric">
+          <h4>-1</h4>
+          <span>Atual</span>
+        </div>
+
+        <div class="metric">
+          <h4>0.17</h4>
+          <span>Média</span>
+        </div>
+
+        <div class="metric">
+          <h4>1.88</h4>
+          <span>Máxima</span>
+        </div>
+
+        <div class="metric">
+          <h4>-1</h4>
+          <span>Mínima</span>
+        </div>
+
+        <div class="metric">
+          <h4>-0.15</h4>
+          <span>Slope</span>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <div class="card-title">
+        <h2>Sinal - Próxima Rodada</h2>
+      </div>
+
+      <div class="signal-box">
+
+        <h3>❄ FRIO BLOQUEADO</h3>
+
+        <p>
+          Par VETO - não apostar [11,13] (score -1)
+        </p>
+
+        <div class="score">
+          -1
+        </div>
+
+      </div>
+
+      <div class="metrics">
+
+        <div class="metric">
+          <h4>500</h4>
+          <span>Rodadas</span>
+        </div>
+
+        <div class="metric">
+          <h4>14</h4>
+          <span>Dist Branco</span>
+        </div>
+
+        <div class="metric">
+          <h4>11 → 13</h4>
+          <span>Par Atual</span>
+        </div>
+
+        <div class="metric">
+          <h4>2</h4>
+          <span>Brancos/20</span>
+        </div>
+
+        <div class="metric">
+          <h4>6.50%</h4>
+          <span>Taxa Base</span>
+        </div>
+
+        <div class="metric">
+          <h4>23:40:57</h4>
+          <span>Calibrado</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="bottom">
+
+    <div class="card">
+
+      <div class="card-title">
+        <h2>Histórico de Sinais</h2>
+      </div>
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>Resultado</th>
+            <th>Num</th>
+            <th>Nível</th>
+            <th>Score</th>
+            <th>Dist B</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr>
+            <td class="danger">ERROU</td>
+            <td>12</td>
+            <td>FRACO</td>
+            <td>0.6</td>
+            <td>12</td>
+          </tr>
+
+          <tr>
+            <td class="warning">IMPEDIDO</td>
+            <td>6</td>
+            <td>MÉDIO</td>
+            <td>1.42</td>
+            <td>9</td>
+          </tr>
+
+          <tr>
+            <td class="success">ACERTOU</td>
+            <td>0</td>
+            <td>FRACO</td>
+            <td>0.5</td>
+            <td>18</td>
+          </tr>
+
+          <tr>
+            <td class="danger">ERROU</td>
+            <td>2</td>
+            <td>FORTE</td>
+            <td>2.45</td>
+            <td>4</td>
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <div class="card">
+
+      <div class="card-title">
+        <h2>Últimos Números</h2>
+      </div>
+
+      <div class="numbers">
+
+        <div class="ball red">2</div>
+        <div class="ball red">1</div>
+        <div class="ball white green-border">0</div>
+        <div class="ball white green-border">0</div>
+        <div class="ball red">3</div>
+        <div class="ball black">12</div>
+        <div class="ball black">11</div>
+        <div class="ball black yellow-border">10</div>
+        <div class="ball red">7</div>
+        <div class="ball white green-border">0</div>
+        <div class="ball black">11</div>
+        <div class="ball red">7</div>
+        <div class="ball red">2</div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const ctx = document.getElementById('chart');
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [1,5,10,15,20,25,30,35,40,45],
+        datasets: [{
+            label: 'Score',
+            data: [0.3,0.1,0.5,0.2,1.6,0.3,0.8,0.2,1.8,-1],
+            borderColor: '#27d3ff',
+            backgroundColor:'rgba(39,211,255,.15)',
+            tension: .4,
+            fill:true
+        }]
+    },
+    options: {
+        responsive:true,
+        plugins:{
+            legend:{
+                labels:{
+                    color:'#fff'
+                }
+            }
+        },
+        scales:{
+            x:{
+                ticks:{
+                    color:'#7185a5'
+                },
+                grid:{
+                    color:'#12203a'
+                }
+            },
+            y:{
+                ticks:{
+                    color:'#7185a5'
+                },
+                grid:{
+                    color:'#12203a'
+                }
+            }
+        }
+    }
+});
+
+</script>
+
+</body>
+</html>

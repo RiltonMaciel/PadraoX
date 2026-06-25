@@ -1,0 +1,16 @@
+{
+  "name": "motor_novo",
+  "version": "1.0.0",
+  "description": "Ambiente limpo para reanalise e criacao de nova estrategia.",
+  "main": "motor-adaptativo.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
