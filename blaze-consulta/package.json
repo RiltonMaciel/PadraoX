@@ -1,0 +1,17 @@
+{
+  "name": "blaze-consulta",
+  "version": "1.0.0",
+  "description": "Consulta resultados Blaze Double + Score V3",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@hapi/iron": "^7.0.1",
+    "cheerio": "^1.0.0-rc.12",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "socket.io": "^4.8.3",
+    "uuid": "^14.0.0"
+  }
+}

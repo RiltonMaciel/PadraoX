@@ -1,0 +1,57 @@
+========================================
+  BLAZE EXCEL EXPORTER - TUTORIAL
+========================================
+
+REQUISITOS:
+- Node.js instalado (https://nodejs.org)
+- Conexao com internet
+
+========================================
+COMO INICIAR (FORMA RAPIDA):
+========================================
+  Duplo-clique no arquivo INICIAR.bat
+  Ele abre o navegador automaticamente.
+
+========================================
+COMO INICIAR (FORMA MANUAL):
+========================================
+1. Abra o terminal (CMD ou PowerShell)
+2. Navegue ate a pasta:
+   cd "C:\Users\RILTON\Desktop\Estudos\BAi\Sinaistaticas"
+3. Na PRIMEIRA VEZ, instale as dependencias:
+   npm install
+4. Inicie o servidor:
+   node server.js
+5. Abra no navegador: http://localhost:5000
+
+========================================
+COMO USAR:
+========================================
+- Clique em 200, 500, 1000 ou 2000 para exportar
+- O arquivo Excel sera salvo na pasta "exports"
+- Clique em "Abrir Pasta no Explorador" para ver os arquivos
+- A lista de arquivos gerados aparece na parte de baixo da pagina
+
+========================================
+ONDE FICAM OS ARQUIVOS EXCEL:
+========================================
+C:\Users\RILTON\Desktop\Estudos\BAi\Sinaistaticas\exports\
+
+========================================
+INFORMACOES TECNICAS:
+========================================
+- PORTA: 5000 (http://localhost:5000)
+- Para PARAR: Feche o terminal ou pressione Ctrl+C
+- Os dados vem da API TipMiner (Blaze Double)
+- Cada arquivo Excel contem: numero, cor, hora e data
+
+========================================
+RESOLUCAO DE PROBLEMAS:
+========================================
+- "Cannot find module": Execute "npm install" na pasta
+- "EADDRINUSE": Outra aplicacao ja usa a porta 5000
+  Feche ela ou mude a porta no server.js (linha 11)
+- "Nenhum dado retornado": Verifique sua conexao com internet
+- Pagina nao abre: Acesse manualmente http://localhost:5000
+
+========================================

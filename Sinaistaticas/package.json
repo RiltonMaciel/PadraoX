@@ -1,0 +1,17 @@
+{
+  "name": "padrao-x",
+  "version": "1.0.0",
+  "description": "Previsão temporal do Branco - Padrão X",
+  "main": "padrao-x/server.js",
+  "scripts": {
+    "start": "cd padrao-x && node server.js",
+    "install": "cd padrao-x && npm install"
+  },
+  "dependencies": {
+    "@hapi/iron": "^7.0.1",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "socket.io": "^4.8.3",
+    "uuid": "^14.0.0"
+  }
+}

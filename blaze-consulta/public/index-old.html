@@ -1,0 +1,828 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blaze Double - Motor Adaptativo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a1a;
+      color: #eee;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    h1 { text-align: center; color: #00d4ff; margin-bottom: 4px; font-size: 22px; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 16px; font-size: 12px; }
+
+    .card {
+      background: #12122a;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px solid #1a1a3e;
+    }
+    .card h2 { color: #00d4ff; margin-bottom: 10px; font-size: 14px; font-weight: 600; }
+
+    /* SCRAPER CONTROLS */
+    .url-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .url-row input[type="text"] {
+      flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a2a4e;
+      background: #0a0a1a; color: #eee; font-size: 13px;
+    }
+    .url-row input[type="text"]::placeholder { color: #444; }
+
+    .ctrl-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .ctrl-row label { color: #888; font-size: 12px; }
+    .ctrl-row input[type="number"] {
+      width: 70px; padding: 8px; border-radius: 6px; border: 1px solid #2a2a4e;
+      background: #0a0a1a; color: #eee; font-size: 13px; text-align: center;
+    }
+    .btn {
+      padding: 9px 16px; border-radius: 8px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: linear-gradient(135deg, #00d4ff, #0088cc); color: #000; }
+    .btn-primary:hover { filter: brightness(1.15); }
+    .btn-success { background: linear-gradient(135deg, #00cc66, #009944); color: #000; }
+    .btn-danger { background: #cc3333; color: #fff; }
+    .btn-ghost { background: transparent; color: #00d4ff; border: 1px solid #2a2a4e; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .status-bar {
+      text-align: center; padding: 6px;
+      font-size: 12px; color: #888; min-height: 20px;
+    }
+    .status-bar.ok { color: #00cc66; }
+    .status-bar.err { color: #ff4444; }
+
+    /* SINAL PRINCIPAL */
+    .sinal-box {
+      text-align: center; padding: 20px; border-radius: 12px;
+      font-size: 28px; font-weight: bold; letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+    .sinal-forte { background: #002211; border: 2px solid #00ff88; color: #00ff88; }
+    .sinal-medio { background: #222200; border: 2px solid #ffaa00; color: #ffaa00; }
+    .sinal-fraco { background: #1a1a2e; border: 2px solid #888; color: #aaa; }
+    .sinal-frio { background: #001122; border: 2px solid #3399ff; color: #3399ff; }
+    .sinal-veto { background: #220000; border: 2px solid #ff4444; color: #ff4444; }
+    .sinal-sem-dados { background: #111; border: 2px dashed #333; color: #555; }
+
+    .score-display { text-align: center; margin-top: 8px; }
+    .score-num { font-size: 48px; font-weight: bold; }
+    .score-pos { color: #00ff88; }
+    .score-warn { color: #ffaa00; }
+    .score-neg { color: #ff4444; }
+    .score-zero { color: #555; }
+
+    /* MÉTRICAS */
+    .metrics {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px; margin-top: 12px;
+    }
+    .metric {
+      background: #0a0a1a; border-radius: 8px; padding: 10px;
+      text-align: center; border: 1px solid #1a1a3e;
+    }
+    .metric .val { font-size: 20px; font-weight: bold; color: #00d4ff; }
+    .metric .lbl { font-size: 10px; color: #666; margin-top: 2px; }
+
+    /* EFICÁCIA BAR */
+    .eficacia-wrap { margin-top: 10px; }
+    .eficacia-bar {
+      height: 8px; background: #1a1a3e; border-radius: 4px; overflow: hidden;
+    }
+    .eficacia-fill {
+      height: 100%; border-radius: 4px; transition: width 0.5s;
+      background: linear-gradient(90deg, #ff4444, #ffaa00, #00ff88);
+    }
+    .eficacia-text { text-align: center; font-size: 11px; color: #888; margin-top: 4px; }
+
+    /* PADRÕES ATIVOS */
+    .padroes-grid {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+    }
+    .padrao-tag {
+      padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    }
+    .padrao-pos { background: #003311; color: #00ff88; border: 1px solid #00663322; }
+    .padrao-neg { background: #330011; color: #ff6666; border: 1px solid #66001122; }
+
+    /* ÚLTIMOS NÚMEROS */
+    .nums-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 42px);
+      gap: 4px;
+      justify-content: center;
+      padding: 4px 0;
+    }
+    .num-cell {
+      width: 42px; height: 42px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .num-ball {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px;
+      position: relative; z-index: 1;
+      cursor: default; transition: transform 0.15s;
+    }
+    .num-ball:hover { transform: scale(1.15); z-index: 10; }
+    .c-branco { background: #f5f5f5; color: #000; border: 2px solid #00d4ff; }
+    .c-verm { background: #d32f2f; color: #fff; }
+
+    /* MARCAS VISUAIS */
+    .num-ball.mark-segurado { border: 2.5px solid #ffaa00; box-shadow: 0 0 6px #ffaa0066; }
+    .num-ball.mark-disfarçado { border: 2.5px solid #ff4444; box-shadow: 0 0 6px #ff444466; }
+    .num-ball.mark-branco { border: 2.5px solid #00ff88; box-shadow: 0 0 8px #00ff8866; }
+
+    /* PONTO INDICADOR */
+    .num-cell .dot-ind {
+      position: absolute; top: -2px; right: -2px;
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 1.5px solid #12122a; z-index: 2;
+    }
+    .dot-seg { background: #ffaa00; }
+    .dot-dis { background: #ff4444; }
+    .dot-bra { background: #00ff88; }
+
+    /* TOOLTIP */
+    .num-cell .num-tip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+      transform: translateX(-50%); z-index: 100;
+      background: #1a1a3e; border: 1px solid #2a2a5e; border-radius: 8px;
+      padding: 6px 10px; white-space: nowrap; text-align: center;
+      pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .num-cell .num-tip::after {
+      content: ''; position: absolute; top: 100%; left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #1a1a3e;
+    }
+    .num-cell:hover .num-tip { display: block; }
+    .num-tip .tip-tipo {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+      padding: 2px 6px; border-radius: 3px; display: inline-block;
+      margin-bottom: 2px;
+    }
+    .num-tip .tip-score {
+      font-size: 12px; font-weight: 800;
+      font-family: 'Consolas', 'SF Mono', monospace;
+      display: block;
+    }
+    .c-preto { background: #222; color: #fff; border: 1px solid #555; }
+
+    /* GRÁFICO TEMPERATURA */
+    .temp-chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      margin-top: 10px;
+    }
+    .temp-chart-wrap canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      background: #080818;
+    }
+    .temp-stats {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .temp-stat {
+      text-align: center; padding: 6px 14px;
+      border-radius: 8px; background: #0a0a1a;
+      border: 1px solid #1a1a3e;
+    }
+    .temp-stat .ts-val { font-size: 18px; font-weight: bold; }
+    .temp-stat .ts-lbl { font-size: 10px; color: #666; margin-top: 2px; }
+    .temp-legend {
+      display: flex; gap: 16px; justify-content: center;
+      margin-top: 8px; font-size: 11px; color: #888;
+    }
+    .temp-legend span::before {
+      content: ''; display: inline-block; width: 14px; height: 3px;
+      margin-right: 4px; vertical-align: middle; border-radius: 2px;
+    }
+    .leg-score::before { background: #00d4ff; }
+    .leg-media5::before { background: #00ff88; }
+    .leg-media10::before { background: #ff4444; }
+    .trend-badge {
+      display: inline-block; padding: 4px 10px; border-radius: 6px;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .trend-aquecendo { background: #332200; color: #ffaa00; border: 1px solid #ffaa0033; }
+    .trend-esfriando { background: #001133; color: #4488ff; border: 1px solid #4488ff33; }
+    .trend-estavel { background: #1a1a2e; color: #888; border: 1px solid #33335533; }
+
+    /* CONTADOR ACERTOS */
+    .acertos-box {
+      display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+      padding: 10px; margin-bottom: 8px;
+      background: #0a0a1a; border-radius: 8px; border: 1px solid #1a1a3e;
+    }
+    .acerto-item {
+      text-align: center; padding: 4px 12px;
+    }
+    .acerto-item .ai-val { font-size: 20px; font-weight: bold; }
+    .acerto-item .ai-lbl { font-size: 9px; color: #666; margin-top: 2px; }
+
+    /* HISTÓRICO SINAIS */
+    .hist-table {
+      width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px;
+    }
+    .hist-table th {
+      background: #1a1a3e; color: #00d4ff; padding: 6px; text-align: center;
+      position: sticky; top: 0; font-size: 11px;
+    }
+    .hist-table td { padding: 5px 6px; text-align: center; border-bottom: 1px solid #1a1a3e; }
+    .hist-scroll { max-height: 300px; overflow-y: auto; }
+
+    /* MANUAL TOGGLE */
+    .toggle-link {
+      background: none; border: none; color: #00d4ff; cursor: pointer;
+      font-size: 12px; text-decoration: underline; padding: 0;
+    }
+    .manual-area {
+      display: none; margin-top: 10px;
+    }
+    .manual-area.show { display: block; }
+    .manual-area textarea {
+      width: 100%; min-height: 100px; padding: 10px; border-radius: 8px;
+      border: 1px solid #2a2a4e; background: #0a0a1a; color: #eee;
+      font-size: 12px; font-family: monospace; resize: vertical;
+    }
+    .manual-area textarea::placeholder { color: #444; }
+
+    /* PULSE */
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    .auto-on { animation: pulse 2s infinite; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+    .dot-green { background: #00cc66; }
+    .dot-red { background: #ff4444; }
+    .dot-gray { background: #555; }
+  </style>
+</head>
+<body>
+  <h1>Motor Adaptativo - Blaze Double</h1>
+  <p class="subtitle">Motor v7 — Pares Condicionais + Gatilhos + Veto | Validado: 16.7k jogos</p>
+
+  <!-- CONTROLES DE SCRAPING -->
+  <div class="card">
+    <h2>Fonte de Dados - TipMiner API</h2>
+    <div class="ctrl-row">
+      <label>Rodadas:</label>
+      <input type="number" id="limitInput" value="500" min="50" max="2000" style="width:80px">
+      <button class="btn btn-primary" id="btnBuscar" onclick="buscarDados()">Buscar dados</button>
+      <label>Auto a cada</label>
+      <input type="number" id="intervalo" value="30" min="10" max="600">
+      <label>seg</label>
+      <button class="btn btn-success" id="btnAuto" onclick="toggleAuto()">Iniciar Auto</button>
+      <button class="toggle-link" onclick="toggleManual()">Colar manualmente</button>
+    </div>
+    <div class="manual-area" id="manualArea">
+      <textarea id="manualInput" placeholder="Cole aqui os dados do TipMiner (Ctrl+A na tabela)..."></textarea>
+      <div style="margin-top:8px">
+        <button class="btn btn-ghost" onclick="enviarManual()">Carregar dados colados</button>
+      </div>
+    </div>
+    <div class="status-bar" id="statusBar">
+      <span class="dot dot-gray"></span> Aguardando dados...
+    </div>
+  </div>
+
+  <!-- SINAL PRINCIPAL -->
+  <div class="card">
+    <h2>Sinal - Proxima Rodada</h2>
+    <div class="sinal-box sinal-sem-dados" id="sinalBox">AGUARDANDO DADOS</div>
+    <div class="score-display">
+      <div class="score-num score-zero" id="scoreNum">-</div>
+    </div>
+    <div class="eficacia-wrap">
+      <div class="eficacia-bar"><div class="eficacia-fill" id="eficaciaFill" style="width:0%"></div></div>
+      <div class="eficacia-text" id="eficaciaText">Eficacia: -</div>
+    </div>
+    <div class="metrics" id="metricsGrid"></div>
+  </div>
+
+  <!-- PADRÕES ATIVOS -->
+  <div class="card" id="padroesCard" style="display:none">
+    <h2>Par Atual &amp; Gatilhos</h2>
+    <div class="padroes-grid" id="padroesGrid"></div>
+  </div>
+
+  <!-- ÚLTIMOS NÚMEROS -->
+  <div class="card" id="numsCard" style="display:none">
+    <h2>Ultimos Numeros</h2>
+    <div class="nums-row" id="numsRow"></div>
+  </div>
+
+  <!-- TEMPERATURA (GRÁFICO DE SCORE) -->
+  <div class="card" id="tempCard" style="display:none">
+    <h2>Temperatura do Motor <span id="trendBadge" class="trend-badge trend-estavel">--</span></h2>
+    <div class="temp-chart-wrap">
+      <canvas id="tempCanvas"></canvas>
+    </div>
+    <div class="temp-legend">
+      <span class="leg-score">Score</span>
+      <span class="leg-media5">Média 5</span>
+      <span class="leg-media10">Média 10</span>
+    </div>
+    <div class="temp-stats" id="tempStats"></div>
+  </div>
+
+  <!-- HISTÓRICO DE SINAIS -->
+  <div class="card" id="histCard" style="display:none">
+    <h2>Historico de Sinais</h2>
+    <div class="acertos-box" id="acertosBox"></div>
+    <div class="hist-scroll">
+      <table class="hist-table">
+        <thead><tr><th>Hora</th><th>Resultado</th><th>Num</th><th>Nivel</th><th>Score</th><th>Dist B</th></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LINK HISTÓRICO COMPLETO -->
+  <div class="card" style="text-align:center">
+    <a href="/historico.html" class="btn btn-ghost" style="font-size:14px;padding:12px 24px;text-decoration:none;display:inline-block">
+      📊 Histórico Completo (1000 jogos)
+    </a>
+  </div>
+
+  <script>
+    let autoInterval = null;
+    let isAuto = false;
+
+    // ===== BUSCAR TIPMINER =====
+    async function buscarDados() {
+      const limit = parseInt(document.getElementById('limitInput').value) || 500;
+
+      setStatus('Buscando ' + limit + ' rodadas do TipMiner...', '');
+      document.getElementById('btnBuscar').disabled = true;
+
+      try {
+        const resp = await fetch('/api/fetch-tipminer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit })
+        });
+        const data = await resp.json();
+
+        if (data.erro) { setStatus(data.erro, 'err'); return; }
+        if (data.sucesso && data.rodadas > 0) {
+          setStatus(data.mensagem, 'ok');
+          await avaliar();
+        } else {
+          setStatus(data.mensagem || 'Nenhum dado retornado.', 'err');
+        }
+      } catch (e) {
+        setStatus('Erro de conexao: ' + e.message, 'err');
+      } finally {
+        document.getElementById('btnBuscar').disabled = false;
+      }
+    }
+
+    // ===== ENVIAR MANUAL =====
+    async function enviarManual() {
+      const texto = document.getElementById('manualInput').value.trim();
+      if (!texto) return setStatus('Cole os dados primeiro', 'err');
+
+      setStatus('Processando...', '');
+      try {
+        const resp = await fetch('/api/dados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texto })
+        });
+        const data = await resp.json();
+
+        if (data.erro) { setStatus(data.erro, 'err'); return; }
+        setStatus(data.rodadas + ' rodadas carregadas', 'ok');
+        await avaliar();
+      } catch (e) {
+        setStatus('Erro: ' + e.message, 'err');
+      }
+    }
+
+    // ===== AUTO SCRAPING =====
+    function toggleAuto() {
+      if (isAuto) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        isAuto = false;
+        document.getElementById('btnAuto').textContent = 'Iniciar Auto';
+        document.getElementById('btnAuto').className = 'btn btn-success';
+        setStatus('Auto-scraping parado', '');
+      } else {
+        const seg = parseInt(document.getElementById('intervalo').value) || 30;
+        if (seg < 10) return setStatus('Intervalo minimo: 10 segundos', 'err');
+
+        isAuto = true;
+        document.getElementById('btnAuto').textContent = 'Parar Auto';
+        document.getElementById('btnAuto').className = 'btn btn-danger auto-on';
+        setStatus('Auto-scraping ativo a cada ' + seg + 's', 'ok');
+
+        buscarDados(); // buscar imediatamente
+        autoInterval = setInterval(() => buscarDados(), seg * 1000);
+      }
+    }
+
+    // ===== AVALIAR =====
+    async function avaliar() {
+      try {
+        const resp = await fetch('/api/avaliar');
+        const d = await resp.json();
+
+        if (d.erro) {
+          document.getElementById('sinalBox').className = 'sinal-box sinal-sem-dados';
+          document.getElementById('sinalBox').textContent = d.erro;
+          return;
+        }
+
+        // SINAL - NÍVEIS + VETO
+        const sinalBox = document.getElementById('sinalBox');
+        let sinalCls, sinalIcon, sinalDesc;
+        if (d.veto) {
+          sinalCls = 'sinal-veto';
+          sinalIcon = '🚫';
+          sinalDesc = 'VETO - Par bloqueado, não apostar';
+        } else if (d.nivel === 'FORTE') {
+          sinalCls = 'sinal-forte';
+          sinalIcon = '🔥';
+          sinalDesc = 'Par HOT confirmado';
+        } else if (d.nivel === 'MEDIO') {
+          sinalCls = 'sinal-medio';
+          sinalIcon = '⚡';
+          sinalDesc = 'Par/gatilho ativo';
+        } else if (d.nivel === 'FRACO') {
+          sinalCls = 'sinal-fraco';
+          sinalIcon = '💤';
+          sinalDesc = 'Gatilho fraco';
+        } else {
+          sinalCls = 'sinal-frio';
+          sinalIcon = '❄️';
+          sinalDesc = 'Sem padrão';
+        }
+        sinalBox.className = 'sinal-box ' + sinalCls;
+        const parInfo = d.par ? ` [${d.par}]` : '';
+        sinalBox.textContent = sinalIcon + ' ' + (d.veto ? 'VETO' : d.nivel) + ' - ' + sinalDesc + parInfo + ' (score ' + d.score + ')';
+
+        // SCORE
+        const scoreNum = document.getElementById('scoreNum');
+        scoreNum.textContent = d.score;
+        scoreNum.className = 'score-num ' + (
+          d.score >= 1.5 ? 'score-pos' : d.score > 0 ? 'score-warn' : d.score < 0 ? 'score-neg' : 'score-zero'
+        );
+
+        // EFICACIA
+        document.getElementById('eficaciaFill').style.width = (d.eficacia * 5) + '%'; // escala 0-20% → 0-100% barra
+        document.getElementById('eficaciaText').textContent =
+          'Hit rate estimado: ' + d.eficacia + '% | Confianca: ' + d.confianca + '%';
+
+        // MÉTRICAS
+        const info = d.info;
+        document.getElementById('metricsGrid').innerHTML = `
+          <div class="metric"><div class="val">${info.totalRodadas}</div><div class="lbl">Rodadas</div></div>
+          <div class="metric"><div class="val" style="color:${info.distBranco>=30?'#ff4444':info.distBranco>=20?'#ffaa00':'#00ff88'}">${info.distBranco}</div><div class="lbl">Dist Branco</div></div>
+          <div class="metric"><div class="val">${info.penultimoNumero ?? '-'} → ${info.ultimoNumero}</div><div class="lbl">Par Atual</div></div>
+          <div class="metric"><div class="val">${info.brancos20}</div><div class="lbl">Brancos/20</div></div>
+          <div class="metric"><div class="val">${info.baseRate}</div><div class="lbl">Taxa Base</div></div>
+          <div class="metric"><div class="val" style="font-size:12px">${info.ultimaCalibracao}</div><div class="lbl">Calibrado</div></div>
+        `;
+
+        // PADRÕES ATIVOS (Par + Gatilho + Veto)
+        document.getElementById('padroesCard').style.display = '';
+        let html = '';
+        if (d.par) {
+          const parLabel = d.veto ? '🚫 VETO' : (d.score >= 2.0 ? '🔥 HOT' : d.score >= 1.3 ? '⚡ ATIVO' : '');
+          const parCls = d.veto ? 'padrao-neg' : (d.score >= 1.3 ? 'padrao-pos' : '');
+          if (parLabel) {
+            html += `<span class="padrao-tag ${parCls}">${parLabel}: Par (${d.par}) score ${d.score}</span>`;
+          }
+        }
+        if (d.gatilho) {
+          html += `<span class="padrao-tag padrao-pos">🎯 Gatilho: num ${d.info.ultimoNumero}</span>`;
+        }
+        if (d.dupla) {
+          html += `<span class="padrao-tag ${d.veto ? 'padrao-neg' : 'padrao-pos'}">2️⃣ Dupla detectada</span>`;
+        }
+        if (!html) {
+          html = '<span class="padrao-tag" style="background:#1a1a2e;color:#666">Nenhum padrão ativo</span>';
+        }
+        document.getElementById('padroesGrid').innerHTML = html;
+
+        // ÚLTIMOS NÚMEROS (30 nums com tooltips informativos)
+        const nums = info.ultimos30;
+        if (nums && nums.length > 0) {
+          document.getElementById('numsCard').style.display = '';
+          document.getElementById('numsRow').innerHTML = nums.map((e, idx) => {
+            const num = typeof e === 'object' ? e.num : e;
+            const tipo = typeof e === 'object' ? e.tipo : 'normal';
+            const score = typeof e === 'object' ? e.score : 0;
+            const cls = num === 0 ? 'c-branco' : num <= 7 ? 'c-verm' : 'c-preto';
+            const scoreCor = score >= 1.5 ? '#00ff88' : score >= 0.5 ? '#ffaa00' : score > 0 ? '#888' : score < 0 ? '#ff4444' : '#555';
+
+            if (tipo === 'segurado') {
+              return `<div class="num-cell">
+                <div class="dot-ind dot-seg"></div>
+                <div class="num-ball ${cls} mark-segurado">${num}</div>
+                <div class="num-tip">
+                  <span class="tip-tipo" style="background:#553300;color:#ffaa00">SEGURADO (dupla)</span>
+                  <span class="tip-score" style="color:#ffaa00">Score: ${score}</span>
+                </div>
+              </div>`;
+            } else if (tipo === 'disfarcado') {
+              return `<div class="num-cell">
+                <div class="dot-ind dot-dis"></div>
+                <div class="num-ball ${cls} mark-disfarçado">${num}</div>
+                <div class="num-tip">
+                  <span class="tip-tipo" style="background:#330000;color:#ff4444">VETO (bloqueado)</span>
+                  <span class="tip-score" style="color:#ff4444">Score: ${score}</span>
+                </div>
+              </div>`;
+            } else if (tipo === 'branco') {
+              return `<div class="num-cell">
+                <div class="dot-ind dot-bra"></div>
+                <div class="num-ball c-branco mark-branco">${num}</div>
+                <div class="num-tip">
+                  <span class="tip-tipo" style="background:#004422;color:#00ff88">BRANCO ✓</span>
+                  <span class="tip-score" style="color:#00ff88">Score: ${score}</span>
+                </div>
+              </div>`;
+            } else {
+              return `<div class="num-cell">
+                <div class="num-ball ${cls}">${num}</div>
+                <div class="num-tip">
+                  <span class="tip-score" style="color:${scoreCor}">Score: ${score}</span>
+                </div>
+              </div>`;
+            }
+          }).join('');
+        }
+
+        // HISTÓRICO DE SINAIS
+        if (d.historicoSinais && d.historicoSinais.length > 0) {
+          document.getElementById('histCard').style.display = '';
+
+          // Contador de acertos
+          if (d.contadorAcertos) {
+            const c = d.contadorAcertos;
+            const taxaGeral = c.total > 0 ? (c.acertos / c.total * 100).toFixed(1) : '0';
+            const taxaForte = c.fortes > 0 ? (c.acertosForte / c.fortes * 100).toFixed(1) : '0';
+            const taxaMedio = c.medios > 0 ? (c.acertosMedio / c.medios * 100).toFixed(1) : '0';
+            document.getElementById('acertosBox').innerHTML = `
+              <div class="acerto-item"><div class="ai-val" style="color:#00ff88">${c.acertos}</div><div class="ai-lbl">ACERTOS</div></div>
+              <div class="acerto-item"><div class="ai-val" style="color:#ffaa00">${c.impedidos}</div><div class="ai-lbl">IMPEDIDOS</div></div>
+              <div class="acerto-item"><div class="ai-val" style="color:#00d4ff">${c.total}</div><div class="ai-lbl">SINAIS</div></div>
+              <div class="acerto-item"><div class="ai-val" style="color:#00ff88">${taxaGeral}%</div><div class="ai-lbl">TAXA GERAL</div></div>
+              <div class="acerto-item"><div class="ai-val" style="color:#00ff88">${c.acertosForte}/${c.fortes}</div><div class="ai-lbl">FORTE (${taxaForte}%)</div></div>
+              <div class="acerto-item"><div class="ai-val" style="color:#ffaa00">${c.acertosMedio}/${c.medios}</div><div class="ai-lbl">MEDIO (${taxaMedio}%)</div></div>
+            `;
+          }
+
+          document.getElementById('histBody').innerHTML = d.historicoSinais.map(h => {
+            const nv2 = h.nivel || 'FRIO';
+            const corMap = { 'FORTE': '#00ff88', 'MEDIO': '#ffaa00', 'FRACO': '#aaa', 'FRIO': '#3399ff' };
+            const cor = corMap[nv2] || '#888';
+            const numCls = h.ultimoNum === 0 ? 'c-branco' : h.ultimoNum <= 7 ? 'c-verm' : 'c-preto';
+            // Resultado com cor
+            let resCor = '#ff4444'; // erro
+            if (h.acertou) resCor = '#00ff88';
+            else if (h.segurado) resCor = '#ffaa00';
+            const resultado = h.resultado || 'ERROU';
+            return `<tr style="${h.acertou ? 'background:#002211' : h.segurado ? 'background:#222200' : ''}">
+              <td>${h.hora}</td>
+              <td style="color:${resCor};font-weight:bold;font-size:11px">${resultado}</td>
+              <td><span class="num-ball ${numCls}" style="width:24px;height:24px;font-size:10px;display:inline-flex">${h.ultimoNum}</span></td>
+              <td style="color:${cor};font-weight:bold">${nv2}</td>
+              <td>${h.score}</td>
+              <td style="color:${h.distBranco>=30?'#ff4444':h.distBranco>=20?'#ffaa00':'#00ff88'}">${h.distBranco}</td>
+            </tr>`;
+          }).join('');
+        }
+
+        // ATUALIZAR TEMPERATURA
+        atualizarTemperatura();
+
+      } catch (e) {
+        console.error('Erro ao avaliar:', e);
+      }
+    }
+
+    // ===== HELPERS =====
+    function setStatus(msg, type) {
+      const bar = document.getElementById('statusBar');
+      const dotCls = type === 'ok' ? 'dot-green' : type === 'err' ? 'dot-red' : 'dot-gray';
+      bar.className = 'status-bar ' + (type || '');
+      bar.innerHTML = '<span class="dot ' + dotCls + '"></span> ' + msg;
+    }
+
+    function toggleManual() {
+      document.getElementById('manualArea').classList.toggle('show');
+    }
+
+    // Ao carregar, verificar se já tem dados
+    fetch('/api/status').then(r => r.json()).then(d => {
+      if (d.rodadas > 0) {
+        setStatus(d.rodadas + ' rodadas em memoria', 'ok');
+        avaliar();
+      }
+    });
+
+    // ===== GRÁFICO TEMPERATURA =====
+    async function atualizarTemperatura() {
+      try {
+        const resp = await fetch('/api/temperatura?qtd=50');
+        const d = await resp.json();
+        if (d.erro || !d.pontos || d.pontos.length < 5) return;
+
+        document.getElementById('tempCard').style.display = '';
+
+        // Badge de tendência
+        const badge = document.getElementById('trendBadge');
+        const trendCfg = {
+          'AQUECENDO': { cls: 'trend-aquecendo', icon: '🔥', txt: 'AQUECENDO' },
+          'ESFRIANDO': { cls: 'trend-esfriando', icon: '❄️', txt: 'ESFRIANDO' },
+          'ESTÁVEL': { cls: 'trend-estavel', icon: '→', txt: 'ESTÁVEL' }
+        };
+        const tc = trendCfg[d.tendencia] || trendCfg['ESTÁVEL'];
+        badge.className = 'trend-badge ' + tc.cls;
+        badge.textContent = tc.icon + ' ' + tc.txt;
+
+        // Estatísticas
+        const s = d.stats;
+        const corAtual = s.atual >= 1.5 ? '#00ff88' : s.atual >= 0.5 ? '#ffaa00' : s.atual > 0 ? '#888' : '#ff4444';
+        document.getElementById('tempStats').innerHTML = `
+          <div class="temp-stat"><div class="ts-val" style="color:${corAtual}">${s.atual}</div><div class="ts-lbl">Atual</div></div>
+          <div class="temp-stat"><div class="ts-val" style="color:#00ff88">${s.media}</div><div class="ts-lbl">Média</div></div>
+          <div class="temp-stat"><div class="ts-val" style="color:#ff4444">${s.maxima}</div><div class="ts-lbl">Máxima</div></div>
+          <div class="temp-stat"><div class="ts-val" style="color:#4488ff">${s.minima}</div><div class="ts-lbl">Mínima</div></div>
+          <div class="temp-stat"><div class="ts-val" style="color:#ffaa00">${d.slope > 0 ? '+' : ''}${d.slope}</div><div class="ts-lbl">Slope</div></div>
+        `;
+
+        // Desenhar gráfico
+        desenharGrafico(d);
+      } catch (e) {
+        console.error('Erro temperatura:', e);
+      }
+    }
+
+    function desenharGrafico(data) {
+      const canvas = document.getElementById('tempCanvas');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      const W = rect.width, H = rect.height;
+
+      // Margens
+      const ml = 40, mr = 10, mt = 20, mb = 30;
+      const cw = W - ml - mr, ch = H - mt - mb;
+
+      // Dados
+      const scores = data.pontos.map(p => p.score);
+      const media5 = data.media5;
+      const media10 = data.media10;
+      const brancos = data.pontos.map(p => p.branco);
+      const vetos = data.pontos.map(p => p.veto);
+
+      // Range Y
+      const allVals = [...scores, ...media5, ...media10];
+      let yMin = Math.min(...allVals) - 0.5;
+      let yMax = Math.max(...allVals) + 0.5;
+      if (yMax - yMin < 2) { yMin -= 1; yMax += 1; }
+
+      const n = scores.length;
+      const xStep = cw / (n - 1);
+
+      // Funções de mapeamento
+      const mapX = i => ml + i * xStep;
+      const mapY = v => mt + ch - ((v - yMin) / (yMax - yMin)) * ch;
+
+      // Limpar
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid horizontal
+      ctx.strokeStyle = '#1a1a3e';
+      ctx.lineWidth = 0.5;
+      ctx.font = '10px Segoe UI';
+      ctx.fillStyle = '#555';
+      ctx.textAlign = 'right';
+      const gridLines = 6;
+      for (let i = 0; i <= gridLines; i++) {
+        const v = yMin + (yMax - yMin) * (i / gridLines);
+        const y = mapY(v);
+        ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(W - mr, y); ctx.stroke();
+        ctx.fillText(v.toFixed(1), ml - 4, y + 3);
+      }
+
+      // Linha zero (referência)
+      if (yMin <= 0 && yMax >= 0) {
+        ctx.strokeStyle = '#333366';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        const y0 = mapY(0);
+        ctx.beginPath(); ctx.moveTo(ml, y0); ctx.lineTo(W - mr, y0); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Zonas de cor (fundo)
+      // Zona FORTE (score >= 1.5)
+      if (yMax >= 1.5) {
+        const yForte = mapY(Math.min(yMax, yMax));
+        const yLim = mapY(1.5);
+        ctx.fillStyle = 'rgba(0, 255, 136, 0.03)';
+        ctx.fillRect(ml, yForte, cw, yLim - yForte);
+      }
+      // Zona negativa
+      if (yMin < 0) {
+        const yZero = mapY(0);
+        const yBot = mapY(yMin);
+        ctx.fillStyle = 'rgba(255, 68, 68, 0.03)';
+        ctx.fillRect(ml, yZero, cw, yBot - yZero);
+      }
+
+      // Marcar brancos e vetos com barras verticais
+      for (let i = 0; i < n; i++) {
+        const x = mapX(i);
+        if (brancos[i]) {
+          ctx.fillStyle = 'rgba(0, 255, 136, 0.15)';
+          ctx.fillRect(x - 2, mt, 4, ch);
+        } else if (vetos[i]) {
+          ctx.fillStyle = 'rgba(255, 68, 68, 0.10)';
+          ctx.fillRect(x - 2, mt, 4, ch);
+        }
+      }
+
+      // Linha Média 10 (fundo, mais grossa)
+      ctx.strokeStyle = '#ff444488';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const x = mapX(i), y = mapY(media10[i]);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Linha Média 5
+      ctx.strokeStyle = '#00ff8888';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const x = mapX(i), y = mapY(media5[i]);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Linha Score principal
+      ctx.strokeStyle = '#00d4ff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const x = mapX(i), y = mapY(scores[i]);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Pontos nos scores
+      for (let i = 0; i < n; i++) {
+        const x = mapX(i), y = mapY(scores[i]);
+        ctx.beginPath();
+        ctx.arc(x, y, brancos[i] ? 5 : vetos[i] ? 4 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = brancos[i] ? '#00ff88' : vetos[i] ? '#ff4444' : scores[i] >= 1.5 ? '#00ff88' : scores[i] > 0 ? '#00d4ff' : '#555';
+        ctx.fill();
+        if (brancos[i]) {
+          ctx.strokeStyle = '#00ff88';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        } else if (vetos[i]) {
+          ctx.strokeStyle = '#ff4444';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      // Eixo X (índices)
+      ctx.fillStyle = '#555';
+      ctx.textAlign = 'center';
+      ctx.font = '9px Segoe UI';
+      const step = Math.max(1, Math.floor(n / 10));
+      for (let i = 0; i < n; i += step) {
+        ctx.fillText(i + 1, mapX(i), H - mb + 14);
+      }
+
+      // Label "Rodadas"
+      ctx.fillStyle = '#444';
+      ctx.font = '9px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('Rodadas', W / 2, H - 2);
+    }
+  </script>
+</body>
+</html>

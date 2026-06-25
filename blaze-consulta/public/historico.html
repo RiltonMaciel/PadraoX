@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico Completo - Blaze Double</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a1a;
+      color: #eee;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .top-bar h1 { color: #00d4ff; font-size: 20px; }
+    .back-link {
+      color: #00d4ff; text-decoration: none; font-size: 13px; font-weight: 600;
+      padding: 8px 16px; border: 1px solid #2a2a4e; border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .back-link:hover { background: #1a1a3e; }
+
+    .card {
+      background: #12122a; border-radius: 12px; padding: 16px;
+      margin-bottom: 14px; border: 1px solid #1a1a3e;
+    }
+
+    /* PAGINAÇÃO */
+    .pag-row {
+      display: flex; gap: 6px; align-items: center; justify-content: center;
+      flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .pag-btn {
+      padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2a4e;
+      background: #0a0a1a; color: #888; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .pag-btn.active { background: #1a1a3e; color: #00d4ff; border-color: #00d4ff; }
+    .pag-btn:hover:not(.active) { border-color: #555; color: #ccc; }
+
+    /* STATS */
+    .stats-row {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: #0a0a1a; border: 1px solid #1a1a3e; border-radius: 8px;
+      padding: 10px 16px; text-align: center; min-width: 100px;
+    }
+    .stat-box .val { font-size: 22px; font-weight: 800; }
+    .stat-box .lbl { font-size: 10px; color: #666; margin-top: 2px; }
+
+    /* GRID */
+    .hist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 42px);
+      gap: 4px;
+      justify-content: center;
+      padding: 8px 0;
+    }
+
+    .cell {
+      width: 42px; height: 42px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .num-ball {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; transition: transform 0.15s;
+      cursor: default; position: relative; z-index: 1;
+    }
+    .num-ball:hover { transform: scale(1.15); z-index: 10; }
+    .c-branco { background: #f5f5f5; color: #000; border: 2px solid #00d4ff; }
+    .c-verm { background: #d32f2f; color: #fff; }
+    .c-preto { background: #222; color: #fff; border: 1px solid #555; }
+
+    /* MARCAS VISUAIS NAS BOLAS */
+    .mark-segurado { border: 2.5px solid #ffaa00; box-shadow: 0 0 6px #ffaa0066; }
+    .mark-disfarçado { border: 2.5px solid #ff4444; box-shadow: 0 0 6px #ff444466; }
+    .mark-branco { border: 2.5px solid #00ff88; box-shadow: 0 0 8px #00ff8866; }
+
+    /* INDICADOR DE PONTO COLORIDO */
+    .cell .dot-indicator {
+      position: absolute; top: -2px; right: -2px;
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 1.5px solid #0a0a1a; z-index: 2;
+    }
+    .dot-segurado { background: #ffaa00; }
+    .dot-disfarcado { background: #ff4444; }
+    .dot-branco { background: #00ff88; }
+
+    /* TOOLTIP NO HOVER */
+    .cell .tooltip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+      transform: translateX(-50%); z-index: 100;
+      background: #1a1a3e; border: 1px solid #2a2a5e; border-radius: 8px;
+      padding: 6px 10px; white-space: nowrap; text-align: center;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .cell .tooltip::after {
+      content: ''; position: absolute; top: 100%; left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #1a1a3e;
+    }
+    .cell:hover .tooltip { display: block; }
+    .tooltip .tt-tipo {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+      padding: 2px 6px; border-radius: 3px; display: inline-block;
+      margin-bottom: 2px;
+    }
+    .tooltip .tt-score {
+      font-size: 12px; font-weight: 800;
+      font-family: 'Consolas', 'SF Mono', monospace;
+      display: block;
+    }
+
+    /* LEGENDA */
+    .legenda {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+      margin-top: 16px; padding: 12px; background: #0a0a1a; border-radius: 8px;
+      border: 1px solid #1a1a3e;
+    }
+    .legenda-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #888; }
+    .legenda-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 8px; font-weight: bold;
+    }
+
+    .loading { text-align: center; color: #555; padding: 40px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <h1>📊 Histórico Completo</h1>
+    <a href="/" class="back-link">← Voltar ao Painel</a>
+  </div>
+
+  <div class="card">
+    <div class="pag-row" id="pagRow"></div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="hist-grid" id="histGrid">
+      <div class="loading">Carregando histórico...</div>
+    </div>
+    <div class="legenda">
+      <div class="legenda-item"><div class="legenda-dot c-branco">0</div> Branco</div>
+      <div class="legenda-item"><div class="legenda-dot c-verm">5</div> Vermelho (1-7)</div>
+      <div class="legenda-item"><div class="legenda-dot c-preto">9</div> Preto (8-14)</div>
+      <div class="legenda-item"><span class="num-label lbl-segurado" style="font-size:9px">SEGURADO</span> Dupla (repetido)</div>
+      <div class="legenda-item"><span class="num-label lbl-disfarçado" style="font-size:9px;color:#ff4444">VETO</span> Par bloqueado (0% branco)</div>
+      <div class="legenda-item"><span class="num-label lbl-branco" style="font-size:9px">BRANCO</span> Branco real (0)</div>
+    </div>
+  </div>
+
+  <script>
+    let paginaAtual = 1;
+
+    async function carregarHistorico(pagina) {
+      paginaAtual = pagina;
+      document.getElementById('histGrid').innerHTML = '<div class="loading">Carregando...</div>';
+
+      try {
+        const resp = await fetch('/api/historico?pagina=' + pagina);
+        const d = await resp.json();
+
+        if (!d.rodadas || d.rodadas.length === 0) {
+          document.getElementById('histGrid').innerHTML = '<div class="loading">Sem dados. Busque rodadas no painel principal primeiro.</div>';
+          return;
+        }
+
+        // PAGINAÇÃO
+        let pagBtns = '';
+        for (let p = 1; p <= d.totalPaginas; p++) {
+          const faixaFim = p * 100;
+          const faixaIni = faixaFim - 99;
+          pagBtns += `<button class="pag-btn ${p === pagina ? 'active' : ''}" onclick="carregarHistorico(${p})">${faixaIni}-${faixaFim}</button>`;
+        }
+        document.getElementById('pagRow').innerHTML = pagBtns;
+
+        // STATS
+        const brancos = d.rodadas.filter(r => r.num === 0).length;
+        const vermelhos = d.rodadas.filter(r => r.cor === 'vermelho').length;
+        const pretos = d.rodadas.filter(r => r.cor === 'preto').length;
+        const segurados = d.rodadas.filter(r => r.tipo === 'segurado').length;
+        const disfarcados = d.rodadas.filter(r => r.tipo === 'disfarcado').length;
+
+        document.getElementById('statsRow').innerHTML = `
+          <div class="stat-box"><div class="val" style="color:#00d4ff">${d.total}</div><div class="lbl">Total Jogos</div></div>
+          <div class="stat-box"><div class="val" style="color:#f5f5f5">${brancos}</div><div class="lbl">⚪ Brancos</div></div>
+          <div class="stat-box"><div class="val" style="color:#ff4444">${vermelhos}</div><div class="lbl">🔴 Vermelhos</div></div>
+          <div class="stat-box"><div class="val" style="color:#888">${pretos}</div><div class="lbl">⚫ Pretos</div></div>
+          <div class="stat-box"><div class="val" style="color:#ffaa00">${segurados}</div><div class="lbl">🔒 Segurados</div></div>
+          <div class="stat-box"><div class="val" style="color:#ff4444">${disfarcados}</div><div class="lbl">🚫 Vetos</div></div>
+          <div class="stat-box"><div class="val" style="color:#00ff88">${(brancos/d.rodadas.length*100).toFixed(1)}%</div><div class="lbl">Taxa Branco</div></div>
+        `;
+
+        // GRID COM ANOTAÇÕES (tooltip no hover, grid alinhado, scores em todos)
+        document.getElementById('histGrid').innerHTML = d.rodadas.map(r => {
+          const cls = r.num === 0 ? 'c-branco' : r.num <= 7 ? 'c-verm' : 'c-preto';
+          const sc = r.score != null ? r.score : 0;
+          const scoreCor = sc >= 1.5 ? '#00ff88' : sc >= 0.5 ? '#ffaa00' : sc > 0 ? '#888' : '#ff4444';
+
+          if (r.tipo === 'segurado') {
+            return `<div class="cell">
+              <div class="dot-indicator dot-segurado"></div>
+              <div class="num-ball ${cls} mark-segurado" title="#${r.pos}">${r.num}</div>
+              <div class="tooltip">
+                <span class="tt-tipo" style="background:#553300;color:#ffaa00">SEGURADO</span>
+                <span class="tt-score" style="color:#ffaa00">Score: ${sc}</span>
+              </div>
+            </div>`;
+          } else if (r.tipo === 'disfarcado') {
+            return `<div class="cell">
+              <div class="dot-indicator dot-disfarcado"></div>
+              <div class="num-ball ${cls} mark-disfarçado" title="#${r.pos}">${r.num}</div>
+              <div class="tooltip">
+                <span class="tt-tipo" style="background:#330000;color:#ff4444">VETO</span>
+                <span class="tt-score" style="color:#ff4444">Score: ${sc}</span>
+              </div>
+            </div>`;
+          } else if (r.tipo === 'branco') {
+            return `<div class="cell">
+              <div class="dot-indicator dot-branco"></div>
+              <div class="num-ball c-branco mark-branco" title="#${r.pos}">${r.num}</div>
+              <div class="tooltip">
+                <span class="tt-tipo" style="background:#004422;color:#00ff88">BRANCO</span>
+                <span class="tt-score" style="color:#00ff88">Score: ${sc}</span>
+              </div>
+            </div>`;
+          } else {
+            return `<div class="cell">
+              <div class="num-ball ${cls}" title="#${r.pos}">${r.num}</div>
+              <div class="tooltip">
+                <span class="tt-score" style="color:${scoreCor}">Score: ${sc}</span>
+              </div>
+            </div>`;
+          }
+        }).join('');
+
+      } catch (e) {
+        document.getElementById('histGrid').innerHTML = '<div class="loading" style="color:#ff4444">Erro: ' + e.message + '</div>';
+      }
+    }
+
+    // Carregar página 1 ao abrir
+    carregarHistorico(1);
+  </script>
+</body>
+</html>

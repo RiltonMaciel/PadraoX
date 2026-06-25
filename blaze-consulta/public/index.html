@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motor Adaptativo - Blaze Double</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *{ margin:0; padding:0; box-sizing:border-box; }
+
+    body{
+      font-family:'Inter',sans-serif;
+      background:#050816;
+      color:#fff;
+      padding:24px;
+      overflow-x:hidden;
+    }
+
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      background:
+        radial-gradient(circle at top left,#0b2a5a55,transparent 30%),
+        radial-gradient(circle at bottom right,#00d2ff22,transparent 25%);
+      z-index:-1;
+    }
+
+    .container{ max-width:1800px; margin:auto; }
+
+    /* TOPBAR */
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:24px;
+      flex-wrap:wrap;
+      gap:16px;
+    }
+    .title h1{ font-size:36px; color:#20c9ff; font-weight:800; }
+    .title p{ color:#7c8ca5; margin-top:6px; font-size:15px; }
+
+    .status{
+      background:#0d1427;
+      border:1px solid #1d315c;
+      padding:16px 22px;
+      border-radius:18px;
+      display:flex;
+      gap:14px;
+      align-items:center;
+      box-shadow:0 0 25px #0b6fff14;
+    }
+    .online{
+      width:10px; height:10px; border-radius:50%;
+      background:#00ff95; box-shadow:0 0 10px #00ff95;
+    }
+    .offline{ background:#ff5667; box-shadow:0 0 10px #ff5667; }
+    .status strong{ font-size:15px; }
+    .status p{ color:#8190aa; font-size:13px; margin-top:2px; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .pulse{ animation: pulse 2s infinite; }
+    .pulse-row{ animation: pulse 1.5s infinite; background:rgba(39,211,255,.04); }
+    .pulse-row td{ border-top:1px solid #1a3a5a; }
+    .analyzing{ color:#4cc9ff; font-weight:700; }
+
+    /* CARDS */
+    .card{
+      background:linear-gradient(180deg,#0b1224,#0a1020);
+      border:1px solid #1b2a4d;
+      border-radius:24px;
+      padding:28px;
+      box-shadow:0 10px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .card-title{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:22px;
+    }
+    .card-title h2{ font-size:20px; color:#dce9ff; }
+
+    .badge{
+      background:#0f2d4d;
+      color:#4cc9ff;
+      border:1px solid #17456f;
+      padding:8px 14px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:600;
+    }
+    .badge-red{ background:#2d0f1a; color:#ff5667; border-color:#4f1727; }
+    .badge-green{ background:#0f2d1a; color:#00ff95; border-color:#174f27; }
+    .badge-amber{ background:#2d2a0f; color:#ffcc4d; border-color:#4f4517; }
+
+    /* GRID LAYOUT */
+    .grid{
+      display:grid;
+      grid-template-columns:1.3fr 1fr;
+      gap:22px;
+      margin-bottom:22px;
+    }
+
+    /* SIGNAL BOX */
+    .signal-box{
+      text-align:center;
+      padding:36px;
+      border-radius:22px;
+      border:1px solid #1c4f7a;
+      background:linear-gradient(180deg,#071322,#09192b);
+    }
+    .signal-box.veto{
+      border-color:#4f1727;
+      background:linear-gradient(180deg,#1a0812,#12091b);
+    }
+    .signal-box.forte{
+      border-color:#174f27;
+      background:linear-gradient(180deg,#071a12,#091b14);
+    }
+    .signal-box.medio{
+      border-color:#4f4517;
+      background:linear-gradient(180deg,#1a1508,#1b1609);
+    }
+    .signal-box h3{
+      font-size:38px;
+      color:#2ec8ff;
+      margin-bottom:14px;
+      font-weight:800;
+    }
+    .signal-box h3.veto{ color:#ff5667; }
+    .signal-box h3.forte{ color:#00ff95; }
+    .signal-box h3.medio{ color:#ffcc4d; }
+    .signal-box h3.fraco{ color:#8da5c7; }
+
+    .signal-box p{
+      color:#8da5c7;
+      font-size:18px;
+    }
+    .score{
+      margin-top:28px;
+      font-size:90px;
+      font-weight:800;
+      text-shadow:0 0 25px currentColor;
+    }
+    .score-green{ color:#00ff95; text-shadow:0 0 25px rgba(0,255,149,.4); }
+    .score-red{ color:#ff4d5e; text-shadow:0 0 25px rgba(255,77,94,.4); }
+    .score-amber{ color:#ffcc4d; text-shadow:0 0 25px rgba(255,204,77,.4); }
+    .score-blue{ color:#2ec8ff; text-shadow:0 0 25px rgba(46,200,255,.4); }
+    .score-muted{ color:#5a6b85; text-shadow:none; }
+
+    /* METRICS */
+    .metrics{
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      gap:16px;
+      margin-top:24px;
+    }
+    .metric{
+      background:#09101f;
+      border:1px solid #16294d;
+      border-radius:18px;
+      padding:18px;
+      text-align:center;
+    }
+    .metric h4{
+      color:#27d3ff;
+      font-size:26px;
+      margin-bottom:8px;
+      font-weight:700;
+    }
+    .metric span{
+      color:#7f92b0;
+      font-size:14px;
+    }
+
+    /* CONTROLES */
+    .controls-card{
+      margin-bottom:22px;
+    }
+    .controls{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .controls label{
+      font-size:15px;
+      color:#8da5c7;
+      font-weight:500;
+    }
+    .controls input[type="number"]{
+      width:80px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid #1b2a4d;
+      background:#09101f;
+      color:#fff;
+      font-size:16px;
+      font-family:inherit;
+      text-align:center;
+    }
+    .controls input[type="number"]:focus{
+      outline:none;
+      border-color:#20c9ff;
+      box-shadow:0 0 12px rgba(32,201,255,.2);
+    }
+
+    .btn{
+      padding:12px 20px;
+      border-radius:12px;
+      border:none;
+      font-size:15px;
+      font-weight:700;
+      font-family:inherit;
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+    .btn:hover{ transform:translateY(-2px); filter:brightness(1.15); }
+    .btn:disabled{ opacity:0.3; cursor:not-allowed; transform:none; }
+    .btn-primary{ background:#20c9ff; color:#050816; }
+    .btn-success{ background:#00ff95; color:#050816; }
+    .btn-danger{ background:#ff5667; color:#fff; }
+    .btn-ghost{
+      background:transparent;
+      color:#8da5c7;
+      border:1px solid #1b2a4d;
+    }
+    .btn-ghost:hover{ border-color:#20c9ff; color:#20c9ff; }
+
+    .toggle-link{
+      background:none; border:none;
+      color:#5a6b85; cursor:pointer;
+      font-size:14px; font-family:inherit;
+      transition:color 0.2s;
+    }
+    .toggle-link:hover{ color:#20c9ff; }
+
+    .manual-area{ display:none; margin-top:16px; }
+    .manual-area.show{ display:block; }
+    .manual-area textarea{
+      width:100%; min-height:100px; padding:16px;
+      border-radius:14px;
+      border:1px solid #1b2a4d;
+      background:#09101f;
+      color:#fff;
+      font-size:14px;
+      font-family:'JetBrains Mono','Fira Code',monospace;
+      resize:vertical;
+    }
+    .manual-area textarea::placeholder{ color:#3a4a65; }
+
+    .status-bar{
+      text-align:center;
+      padding:12px 0 0;
+      font-size:14px;
+      color:#5a6b85;
+      font-weight:500;
+    }
+    .status-bar.ok{ color:#00ff95; }
+    .status-bar.err{ color:#ff5667; }
+
+    /* PADROES / TAGS */
+    .tags-row{ display:flex; flex-wrap:wrap; gap:10px; }
+    .tag{
+      padding:10px 18px;
+      border-radius:12px;
+      font-size:15px;
+      font-weight:700;
+    }
+    .tag-green{ background:rgba(0,255,149,.1); color:#00ff95; border:1px solid rgba(0,255,149,.3); }
+    .tag-red{ background:rgba(255,86,103,.1); color:#ff5667; border:1px solid rgba(255,86,103,.3); }
+    .tag-rec{ background:rgba(255,40,40,.2); color:#ff4040; border:1px solid rgba(255,40,40,.5); font-weight:700; animation: pulse-rec 1s infinite; }
+    @keyframes pulse-rec { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .tag-muted{ background:rgba(90,107,133,.1); color:#5a6b85; border:1px solid rgba(90,107,133,.3); }
+
+    /* NÚMEROS */
+    .numbers{ display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
+    .ball{
+      width:48px; height:48px;
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:16px;
+      border:2px solid transparent;
+      position:relative;
+      cursor:default;
+      transition:transform 0.15s;
+    }
+    .ball:hover{ transform:scale(1.15); z-index:10; }
+    .ball-red{ background:#c53a46; color:#fff; }
+    .ball-white{ background:#f5f5f5; color:#111; }
+    .ball-black{ background:#232734; color:#fff; }
+
+    .green-border{ border-color:#00ff95; box-shadow:0 0 18px rgba(0,255,149,.25); }
+    .yellow-border{ border-color:#ffb700; box-shadow:0 0 18px rgba(255,183,0,.25); }
+    .red-border{ border-color:#ff5667; box-shadow:0 0 18px rgba(255,86,103,.25); }
+
+    .ball .dot-ind{
+      position:absolute; top:-3px; right:-3px;
+      width:10px; height:10px; border-radius:50%;
+      border:2px solid #0a1020;
+    }
+    .dot-seg{ background:#ffb700; }
+    .dot-dis{ background:#ff5667; }
+    .dot-bra{ background:#00ff95; }
+
+    .ball .tooltip{
+      display:none; position:absolute; bottom:calc(100% + 10px); left:50%;
+      transform:translateX(-50%); z-index:100;
+      background:#0d1427;
+      border:1px solid #1d315c;
+      border-radius:12px;
+      padding:10px 14px; white-space:nowrap; text-align:center;
+      pointer-events:none;
+      box-shadow:0 8px 32px rgba(0,0,0,.6);
+    }
+    .ball .tooltip::after{
+      content:''; position:absolute; top:100%; left:50%;
+      transform:translateX(-50%);
+      border:5px solid transparent; border-top-color:#0d1427;
+    }
+    .ball:hover .tooltip{ display:block; }
+    .tip-tipo{
+      font-size:11px; font-weight:700; letter-spacing:0.5px;
+      padding:3px 7px; border-radius:4px; display:inline-block;
+      margin-bottom:4px;
+    }
+    .tip-score{
+      font-size:14px; font-weight:700;
+      font-family:'JetBrains Mono',monospace; display:block;
+    }
+
+    /* BOTTOM GRID */
+    .bottom{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:22px;
+      margin-top:22px;
+    }
+
+    /* TABELA */
+    table{ width:100%; border-collapse:collapse; }
+    th{
+      color:#5ecfff;
+      font-weight:600;
+      text-align:left;
+      padding:14px 8px;
+      font-size:14px;
+      border-bottom:1px solid #12203b;
+    }
+    td{
+      padding:14px 8px;
+      border-top:1px solid #12203b;
+      color:#d9e7ff;
+      font-size:14px;
+    }
+    tr:hover td{ background:rgba(32,201,255,.03); }
+    .success{ color:#00ff95; font-weight:700; }
+    .danger{ color:#ff5667; font-weight:700; }
+    .warning{ color:#ffcc4d; font-weight:700; }
+    .rec{ color:#ff4040; font-weight:700; animation: pulse-rec 1s infinite; }
+    .canceled{ color:#888; font-weight:600; font-style:italic; }
+
+    .hist-scroll{ max-height:420px; overflow-y:auto; overflow-x:auto; }
+    .hist-scroll::-webkit-scrollbar{ width:5px; }
+    .hist-scroll::-webkit-scrollbar-track{ background:transparent; }
+    .hist-scroll::-webkit-scrollbar-thumb{ background:#1b2a4d; border-radius:3px; }
+
+    /* ACERTOS */
+    .acertos-grid{
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      gap:12px;
+      margin-bottom:20px;
+    }
+    .acerto-item{
+      text-align:center; padding:14px 8px;
+      background:#09101f;
+      border:1px solid #16294d;
+      border-radius:14px;
+    }
+    .acerto-item .av{ font-size:22px; font-weight:700; }
+    .acerto-item .al{
+      font-size:11px; font-weight:600;
+      color:#7f92b0; margin-top:4px;
+      text-transform:uppercase; letter-spacing:0.5px;
+    }
+
+    /* CHART */
+    canvas{ height:320px !important; }
+
+    .chart-stats{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:12px;
+      margin-top:20px;
+    }
+    .chart-stat{
+      text-align:center; padding:16px;
+      background:#09101f;
+      border:1px solid #16294d;
+      border-radius:14px;
+    }
+    .chart-stat .csv{ font-size:26px; font-weight:700; color:#27d3ff; }
+    .chart-stat .csl{
+      font-size:12px; color:#7f92b0; margin-top:4px;
+      font-weight:500; text-transform:uppercase;
+    }
+
+    /* EFICACIA */
+    .eficacia-row{
+      margin-top:20px;
+      display:flex; align-items:center; gap:16px;
+    }
+    .eficacia-bar{
+      flex:1; height:6px;
+      background:rgba(255,255,255,.05);
+      border-radius:3px; overflow:hidden;
+    }
+    .eficacia-fill{
+      height:100%; border-radius:3px;
+      transition:width 0.5s ease;
+      background:linear-gradient(90deg,#ff5667,#ffcc4d,#00ff95);
+    }
+    .eficacia-text{
+      font-size:14px; color:#7f92b0;
+      white-space:nowrap; font-weight:600;
+    }
+
+    /* FOOTER */
+    .footer-link{
+      text-align:center; padding:24px; margin-top:12px;
+    }
+    .footer-link a{
+      display:inline-flex; align-items:center; gap:10px;
+      color:#8da5c7; text-decoration:none;
+      font-size:16px; font-weight:600;
+      padding:14px 28px;
+      border:1px solid #1b2a4d;
+      border-radius:14px;
+      transition:all 0.2s;
+    }
+    .footer-link a:hover{
+      border-color:#20c9ff; color:#20c9ff;
+      background:rgba(32,201,255,.05);
+      box-shadow:0 0 25px rgba(32,201,255,.1);
+    }
+
+    /* RESPONSIVE */
+    @media(max-width:1200px){
+      .grid, .bottom{ grid-template-columns:1fr; }
+      .metrics{ grid-template-columns:repeat(3,1fr); }
+      .chart-stats{ grid-template-columns:repeat(3,1fr); }
+      .acertos-grid{ grid-template-columns:repeat(3,1fr); }
+    }
+    @media(max-width:768px){
+      body{ padding:12px 8px; }
+      .container{ max-width:100%; }
+      .topbar{ flex-direction:column; align-items:flex-start; gap:10px; }
+      .status{ width:100%; justify-content:center; padding:10px 14px; }
+      .title h1{ font-size:20px; }
+      .title p{ font-size:11px; line-height:1.4; }
+      .card{ padding:16px 12px; border-radius:16px; }
+      .card-title{ margin-bottom:14px; }
+      .card-title h2{ font-size:16px; }
+      .signal-box{ padding:20px 12px; border-radius:16px; }
+      .signal-box h3{ font-size:20px; margin-bottom:10px; }
+      .signal-box p{ font-size:13px; }
+      .score{ font-size:48px; margin-top:16px; }
+      .metrics{ grid-template-columns:repeat(2,1fr); gap:8px; margin-top:16px; }
+      .metric{ padding:12px 6px; border-radius:12px; }
+      .metric h4{ font-size:18px; margin-bottom:2px; }
+      .metric span{ font-size:10px; }
+      .chart-stats{ grid-template-columns:repeat(2,1fr); gap:8px; margin-top:14px; }
+      .chart-stat{ padding:10px 6px; border-radius:12px; }
+      .chart-stat .csv{ font-size:18px; }
+      .chart-stat .csl{ font-size:9px; }
+      .controls{ flex-direction:column; align-items:stretch; gap:10px; }
+      .controls input[type="number"]{ width:100%; }
+      .btn{ width:100%; text-align:center; padding:14px; font-size:14px; }
+      .numbers{ gap:6px; justify-content:center; }
+      .ball{ width:38px; height:38px; font-size:12px; }
+      .ball .tooltip{ font-size:10px; padding:6px 8px; }
+      .bottom{ gap:14px; }
+      .acertos-grid{ grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
+      .acerto-item{ padding:10px 4px; border-radius:10px; }
+      .acerto-item .av{ font-size:16px; }
+      .acerto-item .al{ font-size:8px; }
+      table{ font-size:11px; display:block; overflow-x:auto; }
+      th{ padding:8px 6px; font-size:10px; white-space:nowrap; }
+      td{ padding:8px 6px; font-size:11px; white-space:nowrap; }
+      .hist-scroll{ max-height:280px; }
+      .tags-row{ gap:6px; }
+      .tag{ padding:6px 10px; font-size:11px; }
+      .footer-link a{ font-size:12px; padding:10px 16px; }
+      canvas{ height:200px !important; }
+      .eficacia-row{ flex-direction:column; gap:8px; }
+      .badge{ padding:5px 8px; font-size:10px; }
+      .chat-box{ width:calc(100% - 16px); right:8px; bottom:8px; height:380px; border-radius:16px; }
+      .chat-toggle{ width:46px; height:46px; bottom:14px; right:14px; }
+      .chat-toggle svg{ width:22px; height:22px; }
+    }
+    @media(max-width:400px){
+      body{ padding:8px 6px; }
+      .title h1{ font-size:18px; }
+      .metrics{ grid-template-columns:repeat(2,1fr); gap:6px; }
+      .metric h4{ font-size:16px; }
+      .metric span{ font-size:9px; }
+      .acertos-grid{ grid-template-columns:repeat(2,1fr); }
+      .chart-stats{ grid-template-columns:repeat(2,1fr); gap:6px; }
+      .ball{ width:34px; height:34px; font-size:11px; }
+      .numbers{ gap:5px; }
+      .score{ font-size:40px; }
+      .signal-box h3{ font-size:17px; }
+      .signal-box p{ font-size:12px; }
+      .card{ padding:14px 10px; }
+    }
+
+    /* BOT */
+    .bot-card{ margin-bottom:22px; }
+    .bot-stats{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:14px;
+      margin-top:18px;
+    }
+    .bot-stat{
+      text-align:center; padding:16px 8px;
+      background:#09101f;
+      border:1px solid #16294d;
+      border-radius:14px;
+    }
+    .bot-stat .bv{ font-size:24px; font-weight:700; }
+    .bot-stat .bl{
+      font-size:11px; font-weight:600;
+      color:#7f92b0; margin-top:4px;
+      text-transform:uppercase; letter-spacing:0.5px;
+    }
+    .bot-log{
+      max-height:200px; overflow-y:auto; margin-top:14px;
+      font-size:12px; color:#7f92b0; font-family:'JetBrains Mono',monospace;
+      background:#060d1a; border:1px solid #12203b; border-radius:12px; padding:12px;
+    }
+    .bot-log::-webkit-scrollbar{ width:4px; }
+    .bot-log::-webkit-scrollbar-thumb{ background:#1b2a4d; border-radius:3px; }
+    .bot-log .log-win{ color:#00ff95; }
+    .bot-log .log-loss{ color:#ff5667; }
+    .bot-log .log-cancel{ color:#888; }
+    .bot-saldo-bar{
+      margin-top:14px; height:8px;
+      background:rgba(255,255,255,.05);
+      border-radius:4px; overflow:hidden;
+    }
+    .bot-saldo-fill{
+      height:100%; border-radius:4px;
+      transition:width 0.5s ease;
+      background:linear-gradient(90deg,#ff5667,#ffcc4d,#00ff95);
+    }
+    @media(max-width:768px){
+      .bot-stats{ grid-template-columns:repeat(2,1fr); gap:8px; }
+      .bot-stat{ padding:10px 6px; }
+      .bot-stat .bv{ font-size:18px; }
+      .bot-log{ font-size:10px; max-height:150px; padding:8px; }
+    }
+
+    /* BOT TOAST */
+    .bot-toast{
+      position:fixed; top:20px; right:20px; z-index:99999;
+      padding:14px 22px; border-radius:14px;
+      font-size:14px; font-weight:600;
+      color:#fff; opacity:0; transform:translateX(100%);
+      transition:all 0.4s ease; pointer-events:none;
+      box-shadow:0 8px 30px rgba(0,0,0,.5);
+      max-width:360px;
+    }
+    .bot-toast.show{ opacity:1; transform:translateX(0); }
+    .bot-toast-entry{ background:linear-gradient(135deg,#0b6fff,#20c9ff); border:1px solid #27d3ff; }
+    .bot-toast-win{ background:linear-gradient(135deg,#065f3a,#00cc6a); border:1px solid #00ff95; }
+    .bot-toast-loss{ background:linear-gradient(135deg,#5c1520,#cc2233); border:1px solid #ff5667; }
+    .bot-toast-cancel{ background:linear-gradient(135deg,#333,#555); border:1px solid #888; }
+    .bot-toast-info{ background:linear-gradient(135deg,#1a2a4d,#0b6fff); border:1px solid #4cc9ff; }
+
+    /* CHAT */
+    .chat-toggle{
+      position:fixed; bottom:24px; right:24px; z-index:9999;
+      width:56px; height:56px; border-radius:50%;
+      background:linear-gradient(135deg,#0b6fff,#20c9ff);
+      border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      box-shadow:0 4px 20px rgba(11,111,255,.4);
+      transition:transform .2s;
+    }
+    .chat-toggle:hover{ transform:scale(1.1); }
+    .chat-toggle svg{ width:26px; height:26px; fill:#fff; }
+    .chat-badge{
+      position:absolute; top:-4px; right:-4px;
+      background:#ff5667; color:#fff; font-size:11px; font-weight:700;
+      width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    }
+
+    .chat-box{
+      position:fixed; bottom:90px; right:24px; z-index:9998;
+      width:360px; height:480px;
+      background:#0a1020; border:1px solid #1b2a4d; border-radius:20px;
+      display:none; flex-direction:column; overflow:hidden;
+      box-shadow:0 10px 50px rgba(0,0,0,.6);
+    }
+    .chat-box.open{ display:flex; }
+    .chat-header{
+      padding:16px 20px; background:#0d1427; border-bottom:1px solid #1b2a4d;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .chat-header h3{ font-size:15px; color:#dce9ff; }
+    .chat-header span{ font-size:12px; color:#5ecfff; }
+    .chat-messages{
+      flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:8px;
+    }
+    .chat-messages::-webkit-scrollbar{ width:4px; }
+    .chat-messages::-webkit-scrollbar-thumb{ background:#1b2a4d; border-radius:4px; }
+    .chat-msg{
+      background:#0d1830; border:1px solid #16294d; border-radius:12px; padding:10px 14px;
+      max-width:85%;
+    }
+    .chat-msg.mine{ align-self:flex-end; background:#0b2a5a; border-color:#17456f; }
+    .chat-msg .msg-user{ font-size:11px; color:#5ecfff; font-weight:600; margin-bottom:3px; }
+    .chat-msg .msg-text{ font-size:13px; color:#d9e7ff; word-break:break-word; }
+    .chat-msg .msg-hora{ font-size:10px; color:#5a6b85; margin-top:4px; text-align:right; }
+    .chat-sistema{ font-size:11px; color:#5a6b85; text-align:center; padding:4px 0; font-style:italic; }
+    .chat-input-area{
+      padding:12px 16px; background:#0d1427; border-top:1px solid #1b2a4d;
+      display:flex; gap:8px;
+    }
+    .chat-input-area input{
+      flex:1; background:#09101f; border:1px solid #16294d; border-radius:10px;
+      padding:10px 14px; color:#fff; font-size:13px; outline:none;
+    }
+    .chat-input-area input:focus{ border-color:#0b6fff; }
+    .chat-input-area button{
+      background:#0b6fff; border:none; border-radius:10px; padding:10px 16px;
+      color:#fff; font-weight:600; cursor:pointer; font-size:13px;
+    }
+    .chat-input-area button:hover{ background:#20c9ff; }
+
+    .chat-login{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:16px; padding:30px;
+    }
+    .chat-login p{ color:#8da5c7; font-size:14px; text-align:center; }
+    .chat-login input{
+      background:#09101f; border:1px solid #16294d; border-radius:10px;
+      padding:12px 18px; color:#fff; font-size:14px; width:100%; text-align:center; outline:none;
+    }
+    .chat-login input:focus{ border-color:#0b6fff; }
+    .chat-login button{
+      background:linear-gradient(135deg,#0b6fff,#20c9ff); border:none; border-radius:10px;
+      padding:12px 30px; color:#fff; font-weight:700; cursor:pointer; font-size:14px;
+    }
+
+    /* POPUP ENTRADA */
+    .welcome-overlay{
+      position:fixed; inset:0; z-index:99999;
+      background:rgba(5,8,22,.92); backdrop-filter:blur(8px);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .welcome-popup{
+      background:linear-gradient(180deg,#0b1224,#0a1020);
+      border:1px solid #1b2a4d; border-radius:24px;
+      padding:40px 36px; max-width:380px; width:90%;
+      text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.6);
+    }
+    .welcome-popup h2{ color:#20c9ff; font-size:24px; margin-bottom:8px; }
+    .welcome-popup p{ color:#7c8ca5; font-size:14px; margin-bottom:24px; }
+    .welcome-popup input{
+      background:#09101f; border:1px solid #16294d; border-radius:12px;
+      padding:14px 20px; color:#fff; font-size:16px; width:100%; text-align:center; outline:none;
+      margin-bottom:16px;
+    }
+    .welcome-popup input:focus{ border-color:#0b6fff; }
+    .welcome-popup button{
+      background:linear-gradient(135deg,#0b6fff,#20c9ff); border:none; border-radius:12px;
+      padding:14px 40px; color:#fff; font-weight:700; cursor:pointer; font-size:15px;
+      width:100%;
+    }
+    .welcome-popup button:hover{ opacity:.9; }
+
+    /* ÍCONE ONLINE NA TOPBAR */
+    .online-btn{
+      background:#0d1427; border:1px solid #1d315c; border-radius:14px;
+      padding:10px 16px; display:flex; align-items:center; gap:8px;
+      cursor:pointer; transition:border-color .2s;
+    }
+    .online-btn:hover{ border-color:#0b6fff; }
+    .online-btn .dot{ width:8px; height:8px; border-radius:50%; background:#00ff95; box-shadow:0 0 8px #00ff95; }
+    .online-btn span{ color:#dce9ff; font-size:13px; font-weight:600; }
+
+    /* BOTÃO USUÁRIO */
+    .btn-user{
+      background:#0d1427; border:1px solid #1d315c; border-radius:14px;
+      padding:10px 16px; color:#dce9ff; font-size:13px; font-weight:600;
+      cursor:pointer; transition:border-color .2s;
+    }
+    .btn-user:hover{ border-color:#4cc9ff; }
+    .btn-admin{
+      background:#1a0d0d; border:1px solid #4f1727; border-radius:14px;
+      padding:10px 16px; color:#ff5667; font-size:13px; font-weight:600;
+      cursor:pointer; transition:border-color .2s;
+    }
+    .btn-admin:hover{ border-color:#ff5667; }
+
+    /* POPUP LISTA ONLINE */
+    .online-overlay{
+      position:fixed; inset:0; z-index:99998;
+      background:rgba(5,8,22,.85); backdrop-filter:blur(4px);
+      display:none; align-items:center; justify-content:center;
+    }
+    .online-overlay.open{ display:flex; }
+    .online-popup{
+      background:linear-gradient(180deg,#0b1224,#0a1020);
+      border:1px solid #1b2a4d; border-radius:20px;
+      padding:28px 24px; max-width:340px; width:90%;
+      box-shadow:0 20px 60px rgba(0,0,0,.6);
+    }
+    .online-popup h3{ color:#20c9ff; font-size:18px; margin-bottom:16px; text-align:center; }
+    .online-popup .close-btn{
+      position:absolute; top:14px; right:18px; background:none; border:none;
+      color:#5a6b85; font-size:20px; cursor:pointer;
+    }
+    .online-popup ul{ list-style:none; max-height:300px; overflow-y:auto; }
+    .online-popup li{
+      padding:10px 14px; border-bottom:1px solid #12203b;
+      color:#d9e7ff; font-size:14px; display:flex; align-items:center; gap:10px;
+    }
+    .online-popup li:last-child{ border-bottom:none; }
+    .online-popup li::before{
+      content:''; width:8px; height:8px; border-radius:50%;
+      background:#00ff95; box-shadow:0 0 6px #00ff95; flex-shrink:0;
+    }
+    .online-popup .empty{ color:#5a6b85; text-align:center; padding:20px; font-style:italic; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="title">
+      <h1>Motor Adaptativo - Blaze Double</h1>
+      <p>Motor v8 — Pares + Gatilhos + Veto + Boost Dist + Janela Dinâmica + Triplas + Stacking + Anti-streak</p>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-user" onclick="alterarNome()">👤 <span id="nomeUsuario">Anônimo</span></button>
+      <button class="btn-admin" id="btnLimpar" style="display:none" onclick="limparHistorico()">🗑 Limpar Pendentes</button>
+      <div class="online-btn" id="onlineBtn" onclick="toggleOnlinePopup()">
+        <div class="dot"></div>
+        <span id="onlineCount">0 online</span>
+      </div>
+      <div class="status" id="statusBox">
+        <div class="online" id="statusDot"></div>
+        <div>
+          <strong id="statusTitle">Aguardando</strong>
+          <p id="statusMsg">Sem dados carregados</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROLES -->
+  <div class="card controls-card">
+    <div class="controls">
+      <label>Rodadas</label>
+      <input type="number" id="limitInput" value="500" min="50" max="2000">
+      <button class="btn btn-primary" id="btnBuscar" onclick="buscarDados()">Buscar Analise</button>
+      <label>Auto</label>
+      <input type="number" id="intervalo" value="30" min="10" max="600">
+      <label>seg</label>
+      <button class="btn btn-success" id="btnAuto" onclick="toggleAuto()">Iniciar Auto</button>
+      <button class="toggle-link" onclick="toggleManual()">⌨ manual</button>
+    </div>
+    <div class="manual-area" id="manualArea">
+      <textarea id="manualInput" placeholder="Cole os dados da Analise aqui..."></textarea>
+      <div style="margin-top:10px"><button class="btn btn-ghost" onclick="enviarManual()">Carregar Dados</button></div>
+    </div>
+    <div class="status-bar" id="statusBar">Aguardando dados...</div>
+  </div>
+
+  <!-- GRID PRINCIPAL: TEMPERATURA + SINAL -->
+  <div class="grid">
+
+    <!-- TEMPERATURA -->
+    <div class="card" id="tempCard" style="display:none">
+      <div class="card-title">
+        <h2>Temperatura do Motor</h2>
+        <div class="badge" id="trendBadge">ESTÁVEL</div>
+      </div>
+      <canvas id="tempChart"></canvas>
+      <div class="chart-stats" id="tempStats"></div>
+    </div>
+
+    <!-- SINAL -->
+    <div class="card">
+      <div class="card-title">
+        <h2>Sinal — Próxima Rodada</h2>
+      </div>
+      <div class="signal-box" id="sinalBox">
+        <h3 id="sinalLevel">Aguardando...</h3>
+        <p id="sinalDesc">Busque dados para gerar sinal</p>
+        <div class="score score-muted" id="scoreNum">—</div>
+      </div>
+      <div class="eficacia-row">
+        <div class="eficacia-bar"><div class="eficacia-fill" id="eficaciaFill" style="width:0%"></div></div>
+        <div class="eficacia-text" id="eficaciaText">—</div>
+      </div>
+      <div class="metrics" id="metricsGrid"></div>
+    </div>
+
+  </div>
+
+  <!-- PAR & GATILHOS -->
+  <div class="card" id="padroesCard" style="display:none">
+    <div class="card-title">
+      <h2>Par Atual & Gatilhos</h2>
+    </div>
+    <div class="tags-row" id="padroesGrid"></div>
+  </div>
+
+  <!-- BOT AUTOMÁTICO -->
+  <div class="card bot-card" id="botCard">
+    <div class="card-title">
+      <h2>🤖 Bot Automático</h2>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn btn-ghost" onclick="resetBot()" style="padding:8px 14px;font-size:12px">🔄 Reset</button>
+        <button class="btn" id="botToggleBtn" onclick="toggleBot()" style="padding:8px 14px;font-size:12px;background:#00ff95;color:#0a0e1a;font-weight:700">▶ Ligar</button>
+        <div class="badge" id="botBadge">AGUARDANDO</div>
+      </div>
+    </div>
+    <div class="bot-stats" id="botStats">
+      <div class="bot-stat"><div class="bv" style="color:#27d3ff" id="botBanca">R$ 200,00</div><div class="bl">Banca</div></div>
+      <div class="bot-stat"><div class="bv" style="color:#00ff95" id="botGanhos">0</div><div class="bl">Ganhos</div></div>
+      <div class="bot-stat"><div class="bv" style="color:#ff5667" id="botPerdas">0</div><div class="bl">Perdas</div></div>
+      <div class="bot-stat"><div class="bv" style="color:#888" id="botCancelados">0</div><div class="bl">Cancelados</div></div>
+      <div class="bot-stat"><div class="bv" id="botLucro">R$ 0,00</div><div class="bl">Lucro/Prejuízo</div></div>
+    </div>
+    <div class="bot-saldo-bar"><div class="bot-saldo-fill" id="botBarFill" style="width:50%"></div></div>
+    <div class="bot-log" id="botLog"><em>Aguardando sinais...</em></div>
+  </div>
+
+  <!-- BOTTOM: HISTORICO + NUMEROS -->
+  <div class="bottom">
+
+    <!-- HISTORICO -->
+    <div class="card" id="histCard" style="display:none">
+      <div class="card-title">
+        <h2>Histórico de Sinais</h2>
+      </div>
+      <div class="acertos-grid" id="acertosBox"></div>
+      <div class="hist-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Resultado</th>
+              <th>Casa</th>
+              <th>Nível</th>
+              <th>Score</th>
+              <th>Dist B</th>
+              <th>Hora</th>
+            </tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ÚLTIMOS NÚMEROS -->
+    <div class="card" id="numsCard" style="display:none">
+      <div class="card-title">
+        <h2>Últimos Números</h2>
+      </div>
+      <div class="numbers" id="numsRow"></div>
+    </div>
+
+  </div>
+
+  <div class="footer-link">
+    <a href="/historico.html">📊 Histórico Completo — 1000 jogos</a>
+  </div>
+
+</div>
+
+<script>
+let autoInterval = null, isAuto = false;
+let tempChartInstance = null;
+
+function setStatus(msg, type) {
+  const bar = document.getElementById('statusBar');
+  bar.className = 'status-bar ' + (type || '');
+  bar.textContent = msg;
+  const dot = document.getElementById('statusDot');
+  const title = document.getElementById('statusTitle');
+  const smsg = document.getElementById('statusMsg');
+  if (type === 'ok') {
+    dot.className = 'online';
+    title.textContent = 'Sistema Online';
+    smsg.textContent = msg;
+  } else if (type === 'err') {
+    dot.className = 'online offline';
+    title.textContent = 'Erro';
+    smsg.textContent = msg;
+  }
+}
+
+function toggleManual() { document.getElementById('manualArea').classList.toggle('show'); }
+
+// === USUÁRIO ===
+let nomeUsuario = localStorage.getItem('blazeUser') || 'Anônimo';
+function initUsuario() {
+  document.getElementById('nomeUsuario').textContent = nomeUsuario;
+  // Mostrar botão limpar apenas para admin
+  if (nomeUsuario === 'Majo@lphax') {
+    document.getElementById('btnLimpar').style.display = '';
+  } else {
+    document.getElementById('btnLimpar').style.display = 'none';
+  }
+}
+function alterarNome() {
+  const novo = prompt('Digite seu nome de usuário:', nomeUsuario);
+  if (novo && novo.trim()) {
+    nomeUsuario = novo.trim();
+    localStorage.setItem('blazeUser', nomeUsuario);
+    initUsuario();
+  }
+}
+async function limparHistorico() {
+  if (!confirm('Limpar histórico resolvido (mantém os que estão ANALISANDO)?')) return;
+  try {
+    const resp = await fetch('/api/limpar-historico', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: nomeUsuario })
+    });
+    const data = await resp.json();
+    if (data.sucesso) {
+      alert(data.mensagem);
+      avaliar();
+    } else {
+      alert('Erro: ' + (data.erro || 'Sem permissão'));
+    }
+  } catch (e) { alert('Erro ao limpar: ' + e.message); }
+}
+initUsuario();
+
+async function buscarDados() {
+  const limit = parseInt(document.getElementById('limitInput').value) || 500;
+  setStatus('Buscando ' + limit + ' rodadas...', '');
+  document.getElementById('btnBuscar').disabled = true;
+  try {
+    const resp = await fetch('/api/fetch-tipminer', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({limit}) });
+    const data = await resp.json();
+    if (data.erro) { setStatus(data.erro, 'err'); return; }
+    if (data.sucesso && data.rodadas > 0) { setStatus(data.mensagem, 'ok'); await avaliar(); }
+    else { setStatus(data.mensagem || 'Sem dados.', 'err'); }
+  } catch(e) { setStatus('Erro: ' + e.message, 'err'); }
+  finally { document.getElementById('btnBuscar').disabled = false; }
+}
+
+async function enviarManual() {
+  const texto = document.getElementById('manualInput').value.trim();
+  if (!texto) return setStatus('Cole os dados', 'err');
+  setStatus('Processando...', '');
+  try {
+    const resp = await fetch('/api/dados', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({texto}) });
+    const data = await resp.json();
+    if (data.erro) { setStatus(data.erro, 'err'); return; }
+    setStatus(data.rodadas + ' rodadas carregadas', 'ok'); await avaliar();
+  } catch(e) { setStatus('Erro: ' + e.message, 'err'); }
+}
+
+function toggleAuto() {
+  if (isAuto) {
+    clearInterval(autoInterval); autoInterval = null; isAuto = false;
+    localStorage.removeItem('autoAtivo');
+    document.getElementById('btnAuto').textContent = 'Iniciar Auto';
+    document.getElementById('btnAuto').className = 'btn btn-success';
+    setStatus('Auto parado', '');
+  } else {
+    const seg = parseInt(document.getElementById('intervalo').value) || 30;
+    if (seg < 10) return setStatus('Mínimo 10s', 'err');
+    isAuto = true;
+    localStorage.setItem('autoAtivo', seg);
+    document.getElementById('btnAuto').textContent = 'Parar Auto';
+    document.getElementById('btnAuto').className = 'btn btn-danger pulse';
+    setStatus('Auto ativo — ' + seg + 's', 'ok');
+    buscarDados();
+    autoInterval = setInterval(() => buscarDados(), seg * 1000);
+  }
+}
+
+// === AUTO-START: restaura Auto ao carregar a página ===
+(function restaurarAuto() {
+  const seg = parseInt(localStorage.getItem('autoAtivo'));
+  if (seg && seg >= 10) {
+    document.getElementById('intervalo').value = seg;
+    toggleAuto();
+  }
+})();
+
+// ===== PERSISTÊNCIA LOCAL DO HISTÓRICO =====
+// Evita perder sinais quando o servidor reinicia (Render free tier)
+let historicoLocal = JSON.parse(localStorage.getItem('historicoSinais') || '[]');
+
+function mergeHistorico(serverHist) {
+  // serverHist vem do mais recente ao mais antigo (reversed no backend)
+  if (!serverHist || serverHist.length === 0) {
+    // Servidor sem dados (reiniciou) — usar local
+    return historicoLocal;
+  }
+
+  // Criar chave única para cada sinal: hora + nivel + score
+  function chave(s) { return (s.hora || '') + '|' + (s.nivel || '') + '|' + s.score; }
+
+  const chavesServer = new Set(serverHist.map(chave));
+
+  // Adicionar do local os que não estão no server (mais antigos que server perdeu)
+  const locaisExtras = historicoLocal.filter(s => !chavesServer.has(chave(s)));
+
+  // Merged: server (recentes) + locais extras (antigos) — limitar a 100
+  const merged = [...serverHist, ...locaisExtras].slice(0, 100);
+
+  // Salvar merged como novo local
+  historicoLocal = merged;
+  localStorage.setItem('historicoSinais', JSON.stringify(merged));
+
+  return merged;
+}
+
+async function avaliar() {
+  try {
+    const resp = await fetch('/api/avaliar');
+    const d = await resp.json();
+    if (d.erro) {
+      document.getElementById('sinalLevel').textContent = '—';
+      document.getElementById('sinalDesc').textContent = d.erro;
+      document.getElementById('scoreNum').textContent = '-';
+      return;
+    }
+
+    const box = document.getElementById('sinalBox');
+    const h3 = document.getElementById('sinalLevel');
+    const scoreEl = document.getElementById('scoreNum');
+    let boxCls = '', h3Cls = '', scoreCls = '', levelText = '', desc = '';
+
+    if (d.veto) {
+      boxCls = 'veto'; h3Cls = 'veto'; scoreCls = 'score-red';
+      levelText = '🚫 VETO BLOQUEADO'; desc = 'Par VETO — não apostar';
+    } else if (d.nivel === 'FORTE') {
+      boxCls = 'forte'; h3Cls = 'forte'; scoreCls = 'score-green';
+      levelText = '🔥 SINAL FORTE'; desc = 'Par HOT confirmado — entrada sugerida';
+    } else if (d.nivel === 'MEDIO') {
+      boxCls = 'medio'; h3Cls = 'medio'; scoreCls = 'score-amber';
+      levelText = '⚡ SINAL MÉDIO'; desc = 'Par ou gatilho ativo';
+    } else if (d.nivel === 'FRACO') {
+      boxCls = ''; h3Cls = 'fraco'; scoreCls = 'score-blue';
+      levelText = '💧 SINAL FRACO'; desc = 'Gatilho fraco — cautela';
+    } else {
+      boxCls = ''; h3Cls = ''; scoreCls = 'score-muted';
+      levelText = '❄ FRIO'; desc = 'Sem padrão ativo';
+    }
+
+    box.className = 'signal-box ' + boxCls;
+    h3.className = h3Cls;
+    h3.textContent = levelText;
+    document.getElementById('sinalDesc').textContent = desc + (d.par ? ` [${d.par}] (score ${d.score})` : '');
+    scoreEl.className = 'score ' + scoreCls;
+    scoreEl.textContent = d.score;
+
+    document.getElementById('eficaciaFill').style.width = (d.eficacia * 5) + '%';
+    document.getElementById('eficaciaText').textContent = 'Hit ' + d.eficacia + '% · Conf ' + d.confianca + '%';
+
+    // Métricas
+    const info = d.info;
+    const distCor = info.distBranco >= 30 ? '#ff5667' : info.distBranco >= 20 ? '#ffcc4d' : '#27d3ff';
+    document.getElementById('metricsGrid').innerHTML = `
+      <div class="metric"><h4>${info.totalRodadas}</h4><span>Rodadas</span></div>
+      <div class="metric"><h4 style="color:${distCor}">${info.distBranco}</h4><span>Dist Branco</span></div>
+      <div class="metric"><h4>${info.penultimoNumero ?? '-'} → ${info.ultimoNumero}</h4><span>Par Atual</span></div>
+      <div class="metric"><h4>${info.brancos20}</h4><span>Brancos/20</span></div>
+      <div class="metric"><h4>${info.baseRate}</h4><span>Taxa Base</span></div>
+      <div class="metric"><h4>${info.ultimaCalibracao}</h4><span>Calibrado</span></div>
+    `;
+
+    // Padrões
+    document.getElementById('padroesCard').style.display = '';
+    let tagsHtml = '';
+    if (d.par) {
+      const lbl = d.veto ? '🚫 VETO' : (d.score >= 2.0 ? '🔥 HOT' : d.score >= 1.3 ? '⚡ ATIVO' : '');
+      const tagCls = d.veto ? 'tag-red' : (d.score >= 1.3 ? 'tag-green' : '');
+      if (lbl) tagsHtml += `<span class="tag ${tagCls}">${lbl}: (${d.par}) ${d.score}</span>`;
+    }
+    if (d.gatilho) tagsHtml += `<span class="tag tag-green">🎯 Gatilho: ${d.info.ultimoNumero}</span>`;
+    if (d.dupla) tagsHtml += `<span class="tag ${d.veto ? 'tag-red' : 'tag-green'}">⏺ Dupla</span>`;
+    if (d.boosts && d.boosts.length > 0) {
+      d.boosts.forEach(b => {
+        if (b === 'VETO') return;
+        const isDist = b.includes('Dist') || b.includes('Anti-streak');
+        const cls = isDist ? 'tag-red' : 'tag-green';
+        tagsHtml += `<span class="tag ${cls}">⚡ ${b}</span>`;
+      });
+    }
+    if (!tagsHtml) tagsHtml = '<span class="tag tag-muted">Nenhum padrão ativo</span>';
+    // REC Badge — Ritmo Quebrado
+    if (d.rec && d.rec.ativo) {
+      const gapInfo = d.rec.ultimoGap ? ` | gap anterior: ${d.rec.ultimoGap}` : '';
+      const recTxt = d.rec.ehRecorde
+        ? `🚨 RITMO QUEBRADO - RECORDE! (${d.rec.segurados}x seg, dist ${d.rec.distAtual}${gapInfo})`
+        : `🚨 RITMO QUEBRADO (${d.rec.segurados}x seg, dist ${d.rec.distAtual}${gapInfo})`;
+      tagsHtml = `<span class="tag tag-rec">${recTxt}</span>` + tagsHtml;
+    }
+    document.getElementById('padroesGrid').innerHTML = tagsHtml;
+
+    // Últimos números (recente à esquerda → antigo à direita)
+    const nums = info.ultimos30;
+    if (nums && nums.length > 0) {
+      document.getElementById('numsCard').style.display = '';
+      document.getElementById('numsRow').innerHTML = nums.slice().reverse().map(e => {
+        const num = e.num, tipo = e.tipo, score = e.score, hora = e.hora || '';
+        const cls = num === 0 ? 'ball-white' : num <= 7 ? 'ball-red' : 'ball-black';
+        let borderCls = '';
+        let dotHtml = '';
+        let tipHtml = '';
+
+        if (tipo === 'branco') {
+          borderCls = 'green-border';
+          dotHtml = '<div class="dot-ind dot-bra"></div>';
+          tipHtml = `<div class="tooltip"><span class="tip-tipo" style="background:rgba(0,255,149,.15);color:#00ff95">BRANCO</span><span class="tip-score" style="color:#00ff95">Score: ${score}</span><span class="tip-score" style="color:#7f92b0;font-size:11px">${hora}</span></div>`;
+        } else if (tipo === 'segurado') {
+          borderCls = 'yellow-border';
+          dotHtml = '<div class="dot-ind dot-seg"></div>';
+          tipHtml = `<div class="tooltip"><span class="tip-tipo" style="background:rgba(255,183,0,.15);color:#ffb700">SEGURADO</span><span class="tip-score" style="color:#ffb700">Score: ${score}</span><span class="tip-score" style="color:#7f92b0;font-size:11px">${hora}</span></div>`;
+        } else if (tipo === 'disfarcado') {
+          borderCls = 'red-border';
+          dotHtml = '<div class="dot-ind dot-dis"></div>';
+          tipHtml = `<div class="tooltip"><span class="tip-tipo" style="background:rgba(255,86,103,.15);color:#ff5667">VETO</span><span class="tip-score" style="color:#ff5667">Score: ${score}</span><span class="tip-score" style="color:#7f92b0;font-size:11px">${hora}</span></div>`;
+        } else {
+          const scoreCor = score >= 1.5 ? '#00ff95' : score >= 0.5 ? '#ffcc4d' : score > 0 ? '#8da5c7' : score < 0 ? '#ff5667' : '#5a6b85';
+          tipHtml = `<div class="tooltip"><span class="tip-score" style="color:${scoreCor}">Score: ${score}</span><span class="tip-score" style="color:#7f92b0;font-size:11px">${hora}</span></div>`;
+        }
+
+        return `<div class="ball ${cls} ${borderCls}">${dotHtml}${num}${tipHtml}</div>`;
+      }).join('');
+    }
+
+    // Histórico — persistência local para não perder ao reiniciar servidor
+    const historicoMerged = mergeHistorico(d.historicoSinais || []);
+    const temHistorico = historicoMerged.length > 0 || (d.sinaisPendentes && d.sinaisPendentes.length > 0);
+    if (temHistorico) {
+      document.getElementById('histCard').style.display = '';
+
+      // Contadores recalculados localmente
+      const total = historicoMerged.length;
+      const acertos = historicoMerged.filter(s => s.acertou).length;
+      const recs = historicoMerged.filter(s => s.rec).length;
+      const cancelados = historicoMerged.filter(s => s.cancelado).length;
+      const erros = total - acertos - recs - cancelados;
+      const base = acertos + erros;
+      const txG = base > 0 ? (acertos / base * 100).toFixed(1) : '0';
+      const fortes = historicoMerged.filter(s => s.nivel === 'FORTE');
+      const acertosForte = fortes.filter(s => s.acertou).length;
+      const medios = historicoMerged.filter(s => s.nivel === 'MEDIO');
+      const acertosMedio = medios.filter(s => s.acertou).length;
+      const txF = fortes.length > 0 ? (acertosForte / fortes.length * 100).toFixed(1) : '0';
+      const txM = medios.length > 0 ? (acertosMedio / medios.length * 100).toFixed(1) : '0';
+      document.getElementById('acertosBox').innerHTML = `
+        <div class="acerto-item"><div class="av" style="color:#00ff95">${acertos}</div><div class="al">Acertos</div></div>
+        <div class="acerto-item"><div class="av" style="color:#ff5667">${erros}</div><div class="al">Erros</div></div>
+        <div class="acerto-item"><div class="av" style="color:#ff4040">${recs}</div><div class="al">RECs</div></div>
+        <div class="acerto-item"><div class="av" style="color:#888">${cancelados}</div><div class="al">Cancelados</div></div>
+        <div class="acerto-item"><div class="av" style="color:#00ff95">${txG}%</div><div class="al">Taxa Geral</div></div>
+        <div class="acerto-item"><div class="av" style="color:#00ff95">${acertosForte}/${fortes.length}</div><div class="al">Forte ${txF}%</div></div>
+        <div class="acerto-item"><div class="av" style="color:#ffcc4d">${acertosMedio}/${medios.length}</div><div class="al">Médio ${txM}%</div></div>
+      `;
+
+      // Renderizar pendentes (ANALISANDO...) no topo + histórico resolvido abaixo
+      let rowsHtml = '';
+
+      // Pendentes primeiro (piscando)
+      if (d.sinaisPendentes && d.sinaisPendentes.length > 0) {
+        rowsHtml += d.sinaisPendentes.map(p => {
+          const nv = p.nivel || 'FRACO';
+          const nvCor = { 'FORTE':'#00ff95', 'MEDIO':'#ffcc4d', 'FRACO':'#8da5c7' };
+          const restTxt = p.rodadasRestantes + ' rest.' + (p.confirmacoes ? ' | ' + p.confirmacoes + ' conf.' : '');
+          return `<tr class="pulse-row">
+            <td class="analyzing">⏳ ANALISANDO...</td>
+            <td style="color:#7f92b0;font-size:12px">${restTxt}</td>
+            <td style="color:${nvCor[nv] || '#8da5c7'};font-weight:600">${nv}</td>
+            <td style="font-family:monospace">${p.score}</td>
+            <td style="color:${p.distBranco >= 30 ? '#ff5667' : p.distBranco >= 20 ? '#ffcc4d' : '#5ecfff'}">${p.distBranco}</td>
+            <td style="color:#7f92b0;font-size:12px">${p.hora || ''}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      // Resolvidos (usa histórico merged/persistido)
+      if (historicoMerged.length > 0) {
+        rowsHtml += historicoMerged.map(h => {
+          const nv = h.nivel || 'FRIO';
+          let resCls = 'danger', resTxt = h.resultado || 'ERROU';
+          if (h.acertou) { resCls = 'success'; }
+          else if (h.cancelado) { resCls = 'canceled'; resTxt = '⛔ CANCELADO'; }
+          else if (h.rec) { resCls = 'rec'; resTxt = '🚨 REC'; }
+          else if (h.segurado) { resCls = 'warning'; }
+          const nvCor = { 'FORTE':'#00ff95', 'MEDIO':'#ffcc4d', 'FRACO':'#8da5c7', 'FRIO':'#5ecfff' };
+          // Coluna "Casa": se acertou mostra em qual rodada pagou, senão mostra "—"
+          const casaTxt = h.acertou && h.casaPagou != null ? `<span style="color:#00ff95;font-weight:700">${h.casaPagou}ª</span>` : '—';
+          return `<tr>
+            <td class="${resCls}">${resTxt}</td>
+            <td>${casaTxt}</td>
+            <td style="color:${nvCor[nv] || '#8da5c7'};font-weight:600">${nv}</td>
+            <td style="font-family:monospace">${h.score}</td>
+            <td style="color:${h.distBranco >= 30 ? '#ff5667' : h.distBranco >= 20 ? '#ffcc4d' : '#5ecfff'}">${h.distBranco}</td>
+            <td style="color:#7f92b0;font-size:12px">${h.hora || ''}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      document.getElementById('histBody').innerHTML = rowsHtml;
+    }
+
+    // Bot automático — processar sinais resolvidos
+    if (historicoMerged) calcularBot(historicoMerged);
+
+    // Bot — notificar entrada em sinal pendente
+    verificarEntradaBot(d.sinaisPendentes);
+
+    atualizarTemperatura();
+  } catch(e) { console.error('Erro avaliar:', e); }
+}
+
+async function atualizarTemperatura() {
+  try {
+    const resp = await fetch('/api/temperatura?qtd=50');
+    const d = await resp.json();
+    if (d.erro || !d.pontos || d.pontos.length < 5) return;
+    document.getElementById('tempCard').style.display = '';
+
+    // Badge
+    const badge = document.getElementById('trendBadge');
+    const tc = {
+      'AQUECENDO': ['badge-green','🔥 AQUECENDO'],
+      'ESFRIANDO': ['badge-red','❄ ESFRIANDO'],
+      'ESTÁVEL': ['badge','ESTÁVEL']
+    };
+    const t = tc[d.tendencia] || tc['ESTÁVEL'];
+    badge.className = t[0]; badge.textContent = t[1];
+
+    // Stats
+    const s = d.stats;
+    const corAtual = s.atual >= 1.5 ? '#00ff95' : s.atual >= 0.5 ? '#ffcc4d' : s.atual > 0 ? '#27d3ff' : '#ff5667';
+    document.getElementById('tempStats').innerHTML = `
+      <div class="chart-stat"><div class="csv" style="color:${corAtual}">${s.atual}</div><div class="csl">Atual</div></div>
+      <div class="chart-stat"><div class="csv">${s.media}</div><div class="csl">Média</div></div>
+      <div class="chart-stat"><div class="csv" style="color:#00ff95">${s.maxima}</div><div class="csl">Máxima</div></div>
+      <div class="chart-stat"><div class="csv" style="color:#ff5667">${s.minima}</div><div class="csl">Mínima</div></div>
+      <div class="chart-stat"><div class="csv" style="color:#ffcc4d">${d.slope > 0 ? '+' : ''}${d.slope}</div><div class="csl">Slope</div></div>
+    `;
+
+    // Chart.js
+    const labels = d.pontos.map((_, i) => i + 1);
+    const scores = d.pontos.map(p => p.score);
+
+    if (tempChartInstance) tempChartInstance.destroy();
+
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    tempChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Score',
+            data: scores,
+            borderColor: '#27d3ff',
+            backgroundColor: 'rgba(39,211,255,.1)',
+            tension: 0.3,
+            fill: true,
+            borderWidth: 2.5,
+            pointRadius: scores.map((_, i) => d.pontos[i].branco ? 6 : d.pontos[i].veto ? 5 : 2),
+            pointBackgroundColor: scores.map((_, i) => d.pontos[i].branco ? '#00ff95' : d.pontos[i].veto ? '#ff5667' : '#27d3ff'),
+            pointBorderColor: scores.map((_, i) => d.pontos[i].branco ? '#00ff95' : d.pontos[i].veto ? '#ff5667' : 'transparent'),
+          },
+          {
+            label: 'Média 5',
+            data: d.media5,
+            borderColor: '#00ff95',
+            borderWidth: 1.5,
+            borderDash: [4, 2],
+            tension: 0.3,
+            fill: false,
+            pointRadius: 0,
+          },
+          {
+            label: 'Média 10',
+            data: d.media10,
+            borderColor: '#ff5667',
+            borderWidth: 1.5,
+            borderDash: [6, 3],
+            tension: 0.3,
+            fill: false,
+            pointRadius: 0,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { labels: { color: '#7f92b0', font: { size: 13 } } }
+        },
+        scales: {
+          x: { ticks: { color: '#5a6b85', font: { size: 12 } }, grid: { color: '#12203a' } },
+          y: { ticks: { color: '#5a6b85', font: { size: 12 } }, grid: { color: '#12203a' } }
+        }
+      }
+    });
+  } catch(e) { console.error('Erro temp:', e); }
+}
+
+// Init
+fetch('/api/status').then(r => r.json()).then(d => {
+  if (d.rodadas > 0) { setStatus(d.rodadas + ' rodadas em memória', 'ok'); avaliar(); }
+}).catch(() => {});
+
+// ===== BOT AUTOMÁTICO =====
+const BOT_CONFIG = {
+  bancaInicial: 200,
+  aposta: { FORTE: 15, MEDIO: 5, FRACO: 2.5 },
+  payout: 14
+};
+let botAtivo = localStorage.getItem('botAtivo') === 'true';
+let botState = {
+  banca: BOT_CONFIG.bancaInicial,
+  ganhos: 0,
+  perdas: 0,
+  cancelados: 0,
+  lucro: 0,
+  historico: [],
+  ultimaChave: ''
+};
+let botUltimoPendente = ''; // chave do último sinal pendente notificado
+
+// Carrega estado salvo (persiste entre reloads)
+(function loadBotState() {
+  const saved = localStorage.getItem('botState');
+  if (saved) {
+    try { Object.assign(botState, JSON.parse(saved)); } catch(e) {}
+  }
+  renderBot();
+  renderBotToggle();
+})();
+
+function saveBotState() {
+  localStorage.setItem('botState', JSON.stringify(botState));
+}
+
+function toggleBot() {
+  botAtivo = !botAtivo;
+  localStorage.setItem('botAtivo', botAtivo);
+  renderBotToggle();
+}
+
+function renderBotToggle() {
+  const btn = document.getElementById('botToggleBtn');
+  if (botAtivo) {
+    btn.textContent = '⏹ Parar';
+    btn.style.background = '#ff5667';
+    btn.style.color = '#fff';
+  } else {
+    btn.textContent = '▶ Ligar';
+    btn.style.background = '#00ff95';
+    btn.style.color = '#0a0e1a';
+  }
+}
+
+// Toast de notificação do bot
+function botToast(msg, tipo) {
+  const el = document.createElement('div');
+  el.className = 'bot-toast bot-toast-' + (tipo || 'info');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add('show'), 10);
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 400); }, 4000);
+}
+
+// Notificar entrada do bot em sinal pendente
+function verificarEntradaBot(pendentes) {
+  if (!botAtivo || !pendentes || pendentes.length === 0) return;
+  const p = pendentes[0];
+  const chave = (p.hora || '') + '|' + (p.nivel || '') + '|' + p.score;
+  if (chave !== botUltimoPendente) {
+    botUltimoPendente = chave;
+    const valor = BOT_CONFIG.aposta[p.nivel] || 2.5;
+    botToast(`🤖 ENTRADA! Apostando R$${valor.toFixed(2)}/rodada no ${p.nivel} (score ${p.score})`, 'entry');
+  }
+}
+
+function botChave(s) { return (s.hora || '') + '|' + (s.nivel || '') + '|' + s.score + '|' + (s.acertou ? '1' : '0') + '|' + (s.cancelado ? '1' : '0'); }
+
+function calcularBot(historicoSinais) {
+  if (!botAtivo) return;
+  if (!historicoSinais || historicoSinais.length === 0) return;
+
+  // Array vem do mais recente ao mais antigo — inverter para cronológico
+  const cronologico = historicoSinais.slice().reverse();
+
+  // Encontrar onde parou (pela chave única do último sinal processado)
+  let inicio = 0;
+  if (botState.ultimaChave) {
+    const idx = cronologico.findIndex(s => botChave(s) === botState.ultimaChave);
+    if (idx >= 0) {
+      inicio = idx + 1;
+    }
+    // Se não encontrou (histórico limpo/resetado), processa tudo
+  }
+
+  const sinaisNovos = cronologico.slice(inicio);
+  if (sinaisNovos.length === 0) return;
+
+  for (const sinal of sinaisNovos) {
+    const nivel = sinal.nivel || 'FRACO';
+    const valor = BOT_CONFIG.aposta[nivel] || 2.5;
+
+    if (sinal.cancelado) {
+      const rodadas = sinal.rodadasJogadas || 3;
+      const perda = valor * rodadas;
+      botState.banca -= perda;
+      botState.lucro -= perda;
+      botState.cancelados++;
+      botState.historico.push({
+        tipo: 'cancel', nivel, valor: -perda, hora: sinal.hora || '',
+        msg: `⛔ CANCELADO (${nivel}) — ${rodadas} apostas perdidas: -R$${perda.toFixed(2)}`
+      });
+      botToast(`⛔ Cancelado (${nivel}) -R$${perda.toFixed(2)}`, 'cancel');
+    } else if (sinal.acertou) {
+      const casa = sinal.casaPagou || 5;
+      const ganho14x = valor * BOT_CONFIG.payout;
+      const custoRodadas = valor * casa;
+      const lucroLiq = ganho14x - custoRodadas;
+      botState.banca += lucroLiq;
+      botState.lucro += lucroLiq;
+      botState.ganhos++;
+      botState.historico.push({
+        tipo: 'win', nivel, valor: lucroLiq, hora: sinal.hora || '',
+        msg: `✅ ACERTOU ${casa}ª (${nivel}) — ${casa}x R$${valor.toFixed(2)} + ganho R$${ganho14x.toFixed(2)} → +R$${lucroLiq.toFixed(2)}`
+      });
+      botToast(`✅ Acertou ${casa}ª (${nivel}) +R$${lucroLiq.toFixed(2)}`, 'win');
+    } else {
+      const perda = valor * 10;
+      botState.banca -= perda;
+      botState.lucro -= perda;
+      botState.perdas++;
+      botState.historico.push({
+        tipo: 'loss', nivel, valor: -perda, hora: sinal.hora || '',
+        msg: `❌ ERROU (${nivel}) — 10 apostas perdidas: -R$${perda.toFixed(2)}`
+      });
+      botToast(`❌ Errou (${nivel}) -R$${perda.toFixed(2)}`, 'loss');
+    }
+  }
+
+  // Salvar chave do último sinal processado (mais recente cronologicamente)
+  botState.ultimaChave = botChave(cronologico[cronologico.length - 1]);
+  if (botState.historico.length > 50) botState.historico = botState.historico.slice(-50);
+  saveBotState();
+  renderBot();
+}
+
+function renderBot() {
+  const b = botState;
+  document.getElementById('botBanca').textContent = 'R$ ' + b.banca.toFixed(2).replace('.', ',');
+  document.getElementById('botGanhos').textContent = b.ganhos;
+  document.getElementById('botPerdas').textContent = b.perdas;
+  document.getElementById('botCancelados').textContent = b.cancelados;
+
+  const lucroEl = document.getElementById('botLucro');
+  lucroEl.textContent = (b.lucro >= 0 ? '+' : '') + 'R$ ' + b.lucro.toFixed(2).replace('.', ',');
+  lucroEl.style.color = b.lucro >= 0 ? '#00ff95' : '#ff5667';
+
+  // Badge
+  const badge = document.getElementById('botBadge');
+  if (b.ganhos + b.perdas === 0) {
+    badge.className = 'badge'; badge.textContent = 'AGUARDANDO';
+  } else if (b.lucro > 0) {
+    badge.className = 'badge badge-green'; badge.textContent = '📈 LUCRANDO';
+  } else if (b.lucro < 0) {
+    badge.className = 'badge badge-red'; badge.textContent = '📉 PREJUÍZO';
+  } else {
+    badge.className = 'badge'; badge.textContent = 'EMPATE';
+  }
+
+  // Barra de saldo (0% = faliu, 50% = banca inicial, 100% = 2x banca)
+  const pct = Math.max(0, Math.min(100, (b.banca / (BOT_CONFIG.bancaInicial * 2)) * 100));
+  document.getElementById('botBarFill').style.width = pct + '%';
+
+  // Banca color
+  const bancaEl = document.getElementById('botBanca');
+  bancaEl.style.color = b.banca > BOT_CONFIG.bancaInicial ? '#00ff95' : b.banca < BOT_CONFIG.bancaInicial * 0.5 ? '#ff5667' : '#27d3ff';
+
+  // Log
+  const logEl = document.getElementById('botLog');
+  if (b.historico.length === 0) {
+    logEl.innerHTML = '<em>Aguardando sinais...</em>';
+  } else {
+    logEl.innerHTML = b.historico.slice().reverse().map(h => {
+      const cls = h.tipo === 'win' ? 'log-win' : h.tipo === 'loss' ? 'log-loss' : 'log-cancel';
+      return `<div class="${cls}">${h.hora ? '[' + h.hora + '] ' : ''}${h.msg}</div>`;
+    }).join('');
+  }
+}
+
+function resetBot() {
+  // Marcar ultimaChave como o último sinal ATUAL para não reprocessar o passado
+  let ultimaChaveAtual = '';
+  if (historicoLocal && historicoLocal.length > 0) {
+    // historicoLocal está do mais recente ao mais antigo — o mais recente é [0], 
+    // mas cronologicamente o último é o [0] (reversed na calcularBot)
+    // Pegar o mais recente (index 0) e gerar a chave dele
+    const maisRecente = historicoLocal[0];
+    ultimaChaveAtual = botChave(maisRecente);
+  }
+  botState = { banca: BOT_CONFIG.bancaInicial, ganhos: 0, perdas: 0, cancelados: 0, lucro: 0, historico: [], ultimaChave: ultimaChaveAtual };
+  botUltimoPendente = '';
+  saveBotState();
+  renderBot();
+}
+</script>
+
+<!-- POPUP BOAS-VINDAS -->
+<div class="welcome-overlay" id="welcomeOverlay" style="display:none">
+  <div class="welcome-popup">
+    <h2>Bem-vindo!</h2>
+    <p>Digite seu nome para entrar</p>
+    <input type="text" id="welcomeInput" placeholder="Seu nome..." maxlength="20" autocomplete="off">
+    <button onclick="confirmarNome()">Entrar</button>
+  </div>
+</div>
+
+<!-- POPUP LISTA ONLINE -->
+<div class="online-overlay" id="onlineOverlay" onclick="fecharOnlinePopup(event)">
+  <div class="online-popup">
+    <h3>👥 Usuários Online</h3>
+    <ul id="onlineList"><li class="empty">Ninguém online</li></ul>
+  </div>
+</div>
+
+<!-- CHAT -->
+<button class="chat-toggle" id="chatToggle" onclick="toggleChat()">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/></svg>
+  <div class="chat-badge" id="chatBadge" style="display:none">0</div>
+</button>
+
+<div class="chat-box" id="chatBox">
+  <div class="chat-header">
+    <h3>💬 Chat</h3>
+    <span id="chatOnline">0 online</span>
+  </div>
+  <div class="chat-login" id="chatLogin">
+    <p>Digite seu apelido para entrar no chat</p>
+    <input type="text" id="chatNomeInput" placeholder="Seu apelido..." maxlength="20">
+    <button onclick="entrarChat()">Entrar</button>
+  </div>
+  <div class="chat-messages" id="chatMessages" style="display:none"></div>
+  <div class="chat-input-area" id="chatInputArea" style="display:none">
+    <input type="text" id="chatMsgInput" placeholder="Mensagem..." maxlength="300">
+    <button onclick="enviarMsg()">Enviar</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+let chatAberto = false, chatNome = localStorage.getItem('chatNome') || '', socket = null, unread = 0;
+let onlineUsuarios = [];
+
+// ===== POPUP BOAS-VINDAS =====
+(function() {
+  if (!chatNome) {
+    document.getElementById('welcomeOverlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('welcomeInput').focus(), 100);
+  } else {
+    initSocket();
+  }
+})();
+
+function confirmarNome() {
+  const input = document.getElementById('welcomeInput');
+  const nome = input.value.trim();
+  if (!nome) { input.style.borderColor = '#ff5667'; return; }
+  chatNome = nome;
+  localStorage.setItem('chatNome', chatNome);
+  document.getElementById('welcomeOverlay').style.display = 'none';
+  initSocket();
+  // Se já conectou, emitir agora; senão, o evento 'connect' emitirá
+  if (socket && socket.connected) {
+    socket.emit('chat:entrar', chatNome);
+  }
+}
+
+document.getElementById('welcomeInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') confirmarNome();
+});
+
+// ===== POPUP ONLINE =====
+function toggleOnlinePopup() {
+  const overlay = document.getElementById('onlineOverlay');
+  overlay.classList.toggle('open');
+  if (socket) socket.emit('chat:listarUsuarios');
+}
+
+function fecharOnlinePopup(e) {
+  if (e.target === document.getElementById('onlineOverlay')) {
+    document.getElementById('onlineOverlay').classList.remove('open');
+  }
+}
+
+function renderOnlineList(usuarios) {
+  onlineUsuarios = usuarios;
+  document.getElementById('onlineCount').textContent = usuarios.length + ' online';
+  const ul = document.getElementById('onlineList');
+  if (usuarios.length === 0) {
+    ul.innerHTML = '<li class="empty">Ninguém online</li>';
+  } else {
+    ul.innerHTML = usuarios.map(u => `<li>${escapeHtml(u)}</li>`).join('');
+  }
+}
+
+// ===== CHAT =====
+function toggleChat() {
+  chatAberto = !chatAberto;
+  document.getElementById('chatBox').classList.toggle('open', chatAberto);
+  if (chatAberto) { unread = 0; document.getElementById('chatBadge').style.display = 'none'; }
+  if (chatAberto && !socket) initSocket();
+  if (chatAberto && chatNome) autoEntrar();
+}
+
+function initSocket() {
+  if (socket) return;
+  socket = io(window.location.origin, {
+    transports: ['polling', 'websocket'],
+    upgrade: true,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 2000,
+    timeout: 20000,
+    forceNew: false
+  });
+  socket.on('connect', () => {
+    console.log('[Socket] Conectado:', socket.id);
+    // Sempre re-registrar nome ao conectar/reconectar
+    if (chatNome) {
+      socket.emit('chat:entrar', chatNome);
+    }
+  });
+  socket.on('disconnect', (reason) => {
+    console.log('[Socket] Desconectado:', reason);
+  });
+  socket.on('connect_error', (err) => {
+    console.log('[Socket] Erro conexão:', err.message);
+  });
+  socket.on('chat:historico', (msgs) => {
+    const el = document.getElementById('chatMessages');
+    el.innerHTML = '';
+    msgs.forEach(m => appendMsg(m));
+    el.scrollTop = el.scrollHeight;
+  });
+  socket.on('chat:msg', (m) => {
+    appendMsg(m);
+    const el = document.getElementById('chatMessages');
+    el.scrollTop = el.scrollHeight;
+    if (!chatAberto) { unread++; const b = document.getElementById('chatBadge'); b.textContent = unread; b.style.display = ''; }
+  });
+  socket.on('chat:sistema', (txt) => {
+    const el = document.getElementById('chatMessages');
+    el.innerHTML += `<div class="chat-sistema">${escapeHtml(txt)}</div>`;
+    el.scrollTop = el.scrollHeight;
+  });
+  socket.on('chat:online', (n) => {
+    document.getElementById('onlineCount').textContent = n + ' online';
+    document.getElementById('chatOnline').textContent = n + ' online';
+  });
+  socket.on('chat:usuarios', (lista) => {
+    renderOnlineList(lista);
+  });
+}
+
+function entrarChat() {
+  const input = document.getElementById('chatNomeInput');
+  const nome = input.value.trim();
+  if (!nome) return;
+  chatNome = nome;
+  localStorage.setItem('chatNome', chatNome);
+  if (!socket) initSocket();
+  if (socket && socket.connected) socket.emit('chat:entrar', chatNome);
+  document.getElementById('chatLogin').style.display = 'none';
+  document.getElementById('chatMessages').style.display = '';
+  document.getElementById('chatInputArea').style.display = '';
+}
+
+function autoEntrar() {
+  if (!chatNome) return;
+  document.getElementById('chatNomeInput').value = chatNome;
+  document.getElementById('chatLogin').style.display = 'none';
+  document.getElementById('chatMessages').style.display = '';
+  document.getElementById('chatInputArea').style.display = '';
+}
+
+function enviarMsg() {
+  const input = document.getElementById('chatMsgInput');
+  const texto = input.value.trim();
+  if (!texto || !socket) return;
+  socket.emit('chat:msg', texto);
+  input.value = '';
+}
+
+function appendMsg(m) {
+  const el = document.getElementById('chatMessages');
+  const isMine = m.user === chatNome;
+  el.innerHTML += `<div class="chat-msg${isMine ? ' mine' : ''}">
+    <div class="msg-user">${escapeHtml(m.user)}</div>
+    <div class="msg-text">${escapeHtml(m.texto)}</div>
+    <div class="msg-hora">${m.hora}</div>
+  </div>`;
+}
+
+function escapeHtml(t) {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Enter para enviar
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.activeElement.id === 'chatMsgInput') enviarMsg();
+  if (e.key === 'Enter' && document.activeElement.id === 'chatNomeInput') entrarChat();
+});
+</script>
+</body>
+</html>

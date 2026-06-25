@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Padrao X - Previsao do Branco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div>
+      <div class="logo">
+        <h1>Padrao<span>X</span></h1>
+        <p>Previsao Temporal do Branco</p>
+      </div>
+      <nav class="menu">
+        <a class="active" href="#">Dashboard</a>
+        <a href="#">Regras</a>
+        <a href="#">Historico</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <p>Ultima atualizacao</p>
+      <strong id="sidebarHora">--:--:--</strong>
+      <div class="live" id="sidebarLive" style="display:none">
+        <div class="dot"></div>
+        AO VIVO
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <h2>Dashboard</h2>
+        <p>Previsao do proximo branco usando Padrao X</p>
+      </div>
+      <div class="top-actions">
+        <button class="theme-btn" onclick="toggleTheme()">&#127769;</button>
+      </div>
+    </div>
+
+    <div id="estadoInicial" style="display:none"></div>
+
+    <div id="estadoLoading" style="display:none">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Buscando dados do TipMiner...</p>
+      </div>
+    </div>
+
+    <div id="dashboard" style="display:none">
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:20px;">
+        <div class="card">
+          <h3>Formula Ativa</h3>
+          <div class="number" id="formulaInfo" style="font-size:18px; color:var(--primary)">-</div>
+        </div>
+        <div class="card">
+          <h3>Ultimo Branco</h3>
+          <div class="number" id="ultimoBrancoInfo" style="font-size:18px;">-</div>
+          <span class="small" id="rodadasAtrasInfo">-</span>
+        </div>
+        <div class="card">
+          <h3>Mediana Intervalo</h3>
+          <div class="number" id="medianaInfo">-</div>
+          <span class="small">rodadas entre brancos</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px; padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <label style="font-size:14px; font-weight:600;">Quantidade de previsoes:</label>
+        <input type="range" id="qtdRange" min="5" max="100" value="20" oninput="document.getElementById('qtdLabel').textContent=this.value" style="flex:1; min-width:150px;">
+        <span id="qtdLabel" style="font-weight:700; color:var(--primary); min-width:30px;">20</span>
+        <button class="btn-buscar" onclick="carregarPrevisoes()" style="padding:10px 16px; font-size:13px;">Atualizar</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+
+        <div class="card" id="previsaoListCard">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px;">&#127919; Proximos Brancos Previstos</h3>
+            <button onclick="copiarPrevisoes()" id="btnCopiar" style="background:rgba(91,92,255,.12);color:var(--primary);border:1px solid rgba(91,92,255,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">&#128203; Copiar</button>
+          </div>
+          <div id="previsaoLista" class="previsao-lista"></div>
+        </div>
+
+        <div class="card" id="sinaisPassadosCard">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px;">&#128202; Sinais Passados</h3>
+            <span class="taxa-badge" id="taxaAcerto">-</span>
+          </div>
+          <div id="sinaisLista" class="sinais-lista"></div>
+        </div>
+
+      </div>
+
+      <div class="card cadeia-panel" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>&#128279; Padrao Cadeia - Previsao Refinada</h3>
+          <span class="cadeia-timer" id="cadeiaTimer">Atualiza em 5s</span>
+        </div>
+        <div id="padraoCadeiaContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px; border-color: rgba(167,139,250,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:#a78bfa;">&#9201; Previsao por Tempo - Proximos Brancos</h3>
+          <div style="display:flex;gap:6px;">
+            <button onclick="abrirHistoricoPrevisoes()" style="background:rgba(167,139,250,.08);color:#a78bfa;border:1px solid rgba(167,139,250,.25);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">📋 Histórico</button>
+            <div style="position:relative;">
+              <button id="btnCopiarTempo" onclick="toggleCopiarTempo(event)" style="background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">&#128203; Copiar</button>
+              <div id="dropdownCopiarTempo" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid rgba(167,139,250,.3);border-radius:12px;padding:14px 16px;min-width:230px;z-index:10001;box-shadow:0 8px 32px rgba(0,0,0,.5);">
+                <p style="font-size:10px;font-weight:700;color:var(--text-soft);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;">Selecione o que copiar</p>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="tpyComV" checked style="accent-color:#a78bfa;width:14px;height:14px;"> F&#243;rmulas com <strong style="color:#ef4444;">V</strong> (vermelhos)</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="tpyComP" checked style="accent-color:#a78bfa;width:14px;height:14px;"> F&#243;rmulas com <strong style="color:#1e3a5f;">P</strong> (pretos)</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="tpyComAVG" checked style="accent-color:#a78bfa;width:14px;height:14px;"> F&#243;rmulas AVG (m&#233;dias)</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="tpyComDiff" checked style="accent-color:#a78bfa;width:14px;height:14px;"> F&#243;rmulas |A-B| (diferen&#231;a)</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="tpyComCiclo" style="accent-color:#a78bfa;width:14px;height:14px;"> Incluir ciclos (CICLO ~Xmin)</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:12px;"><input type="checkbox" id="tpyComMetodo" checked style="accent-color:#a78bfa;width:14px;height:14px;"> Incluir c&#225;lculo (ex: V1+V2=3)</label>
+                <button onclick="executarCopiarTempo()" style="width:100%;padding:8px;border:none;border-radius:8px;background:#a78bfa;color:#1a1a2e;font-size:12px;font-weight:700;cursor:pointer;">&#128203; Copiar sele&#231;&#227;o</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="previsaoTempoContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px; border-color: rgba(239,68,68,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:#ef4444;">&#128721; Detector de REC - Stop-Loss</h3>
+        </div>
+        <div id="recDetectorContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+      <!-- ÚLTIMOS RESULTADOS -->
+      <div class="card" style="margin-top:20px; border-color: rgba(245,158,11,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:var(--yellow);">🎰 Últimos Resultados</h3>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="resultadosCount" style="font-size:11px;color:var(--text-soft);">0 resultados</span>
+            <button onclick="abrirModalResultados()" style="background:rgba(245,158,11,.12);color:var(--yellow);border:1px solid rgba(245,158,11,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">📊 Mostrar mais</button>
+          </div>
+        </div>
+        <div id="ultimosResultadosContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Carregando resultados...</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px; border-color: rgba(91,92,255,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:var(--primary, #5b5cff);">🤖 Bot Apostador — Banca Fictícia</h3>
+        </div>
+        <div id="botContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Carregando bot...</p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL RESULTADOS -->
+  <div id="modalResultados" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;max-width:900px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="font-size:18px;color:var(--yellow);">🎰 Resultados Completos</h3>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <label style="font-size:12px;color:var(--text-soft);">Quantidade:</label>
+          <select id="modalResultadosQtd" onchange="carregarResultadosModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-weight:600;">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+            <option value="2000">2000</option>
+            <option value="5000">5000</option>
+          </select>
+          <button onclick="fecharModalResultados()" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✕ Fechar</button>
+        </div>
+      </div>
+      <div id="modalResultadosContent" style="padding:20px 24px;overflow-y:auto;flex:1;">
+        <p style="color:var(--text-soft);font-size:13px;">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Histórico de Previsões -->
+  <div id="modalHistoricoPrevisoes" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;">
+    <div style="background:var(--card);border-radius:20px;border:1px solid rgba(167,139,250,.3);max-width:720px;width:100%;margin:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px 0;">
+        <div>
+          <h3 style="font-size:16px;color:#a78bfa;margin:0;">📋 Histórico de Previsões</h3>
+          <p style="font-size:11px;color:var(--text-soft);margin:4px 0 0;">Previsões passadas com resultado real — margem ±1 min</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button id="filtroHistTodos" onclick="filtrarHistorico('todos')" style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(167,139,250,.4);background:rgba(167,139,250,.15);color:#a78bfa;">Todos</button>
+          <button id="filtroHistAcertos" onclick="filtrarHistorico('acertos')" style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(0,255,149,.3);background:transparent;color:#00ff95;">✅ Acertos</button>
+          <button id="filtroHistFalhas" onclick="filtrarHistorico('falhas')" style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(255,86,103,.3);background:transparent;color:#ff5667;">❌ Falhas</button>
+          <div style="position:relative;">
+            <button id="btnCopiarHistorico" onclick="toggleCopiarHistorico(event)" style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(167,139,250,.3);background:rgba(167,139,250,.08);color:#a78bfa;">📋 Copiar</button>
+            <div id="dropdownCopiarHistorico" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid rgba(167,139,250,.3);border-radius:12px;padding:14px 16px;min-width:230px;z-index:10001;box-shadow:0 8px 32px rgba(0,0,0,.5);">
+              <p style="font-size:10px;font-weight:700;color:var(--text-soft);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;">Selecione o que copiar</p>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="cpyComV" checked style="accent-color:#a78bfa;width:14px;height:14px;"> Fórmulas com <strong style="color:#ef4444;">V</strong> (vermelhos)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="cpyComP" checked style="accent-color:#a78bfa;width:14px;height:14px;"> Fórmulas com <strong style="color:#1e3a5f;">P</strong> (pretos)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="cpyComAVG" checked style="accent-color:#a78bfa;width:14px;height:14px;"> Fórmulas AVG (médias)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="cpyComDiff" checked style="accent-color:#a78bfa;width:14px;height:14px;"> Fórmulas |A-B| (diferença)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:7px;"><input type="checkbox" id="cpySoAcertos" style="accent-color:#a78bfa;width:14px;height:14px;"> Apenas ✅ acertos</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer;margin-bottom:12px;"><input type="checkbox" id="cpyComDesvio" checked style="accent-color:#a78bfa;width:14px;height:14px;"> Incluir desvio (ex: +5min antes)</label>
+              <button onclick="executarCopiarHistorico()" style="width:100%;padding:8px;border:none;border-radius:8px;background:#a78bfa;color:#1a1a2e;font-size:12px;font-weight:700;cursor:pointer;">📋 Copiar seleção</button>
+            </div>
+          </div>
+          <button onclick="fecharHistoricoPrevisoes()" style="padding:4px 10px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-soft);">✕</button>
+        </div>
+      </div>
+      <div id="historicoPrevisoesSummary" style="padding:12px 24px 0;font-size:11px;color:var(--text-soft);"></div>
+      <div id="historicoPrevisoesList" style="padding:16px 24px 24px;">
+        <p style="color:var(--text-soft);font-size:13px;">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalNome" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div style="background:var(--card);padding:36px;border-radius:20px;border:1px solid var(--border);max-width:360px;width:90%;text-align:center;">
+      <h2 style="margin-bottom:8px;font-size:22px;">&#128075; Bem-vindo!</h2>
+      <p style="color:var(--text-soft);font-size:13px;margin-bottom:20px;">Digite seu nome para entrar no chat</p>
+      <input id="inputNome" type="text" maxlength="20" placeholder="Seu nome..." style="width:100%;padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:15px;font-weight:600;outline:none;" autofocus>
+      <button id="btnEntrar" style="margin-top:14px;width:100%;padding:14px;border:none;border-radius:12px;background:var(--primary);color:white;font-size:15px;font-weight:700;cursor:pointer;">Entrar</button>
+    </div>
+  </div>
+
+  <div id="chatWidget" style="display:none;">
+    <div id="chatBox">
+      <div id="chatHeader">
+        <div><h4>&#128172; Chat</h4><span id="chatOnline">0 online</span></div>
+      </div>
+      <div id="chatMsgs"></div>
+      <div id="chatInput">
+        <input id="chatTxt" type="text" maxlength="300" placeholder="Digite uma mensagem...">
+        <button onclick="enviarMsg()">&#10148;</button>
+      </div>
+    </div>
+    <button id="chatToggle" onclick="toggleChat()">&#128172;<span id="chatBadge" style="display:none">0</span></button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/cadeia.js"></script>
+  <script src="/js/tempo.js"></script>
+  <script src="/js/rec.js"></script>
+  <script src="/js/resultados.js"></script>
+  <script src="/js/bot.js"></script>
+  <script src="/js/chat.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
