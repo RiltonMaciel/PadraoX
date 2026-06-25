@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Padrão X — Previsão do Branco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #131c31;
+      --sidebar: #07101d;
+      --sidebar-card: #0f1729;
+      --text: #ffffff;
+      --text-soft: #94a3b8;
+      --border: #1e293b;
+      --primary: #5b5cff;
+      --green: #22c55e;
+      --green-bg: #052e16;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --yellow-bg: #451a03;
+      --shadow: 0 4px 20px rgba(0,0,0,.25);
+    }
+    [data-theme="light"] {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --sidebar: #07111f;
+      --sidebar-card: #0f1b2c;
+      --text: #111827;
+      --text-soft: #6b7280;
+      --border: #e5e7eb;
+      --primary: #5b5cff;
+      --green: #16a34a;
+      --green-bg: #dcfce7;
+      --red: #ef4444;
+      --yellow: #d97706;
+      --yellow-bg: #fef3c7;
+      --shadow: 0 2px 10px rgba(0,0,0,.04);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+      transition: .3s;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar);
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid var(--border);
+    }
+    .logo h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+    .logo span { color: var(--primary); }
+    .logo p { font-size: 12px; color: var(--text-soft); }
+    .menu { display: flex; flex-direction: column; gap: 10px; margin-top: 30px; }
+    .menu a {
+      text-decoration: none;
+      color: var(--text-soft);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: .2s;
+    }
+    .menu a:hover, .menu a.active { background: var(--primary); color: white; }
+
+    .sidebar-footer {
+      background: var(--sidebar-card);
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      margin-top: 20px;
+    }
+    .sidebar-footer p { font-size: 12px; color: var(--text-soft); margin-bottom: 4px; }
+    .sidebar-footer strong { font-size: 14px; }
+    .live { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-size: 12px; font-weight: 600; margin-top: 6px; }
+    .dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: blink 1.5s infinite; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+    /* MAIN */
+    .main { flex: 1; padding: 30px; overflow-y: auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+    .topbar h2 { font-size: 28px; }
+    .topbar p { color: var(--text-soft); font-size: 14px; }
+    .top-actions { display: flex; align-items: center; gap: 12px; }
+    .btn-buscar {
+      border: none; padding: 12px 20px; border-radius: 12px;
+      background: var(--primary); color: white; cursor: pointer;
+      font-weight: 600; font-size: 14px; transition: .2s;
+    }
+    .btn-buscar:hover { opacity: .85; }
+    .btn-buscar:disabled { opacity: .5; cursor: not-allowed; }
+    .theme-btn {
+      width: 44px; height: 44px; border: none; border-radius: 12px;
+      background: var(--card); color: var(--text); cursor: pointer;
+      font-size: 18px; box-shadow: var(--shadow); transition: .2s;
+    }
+    .theme-btn:hover { transform: scale(1.05); }
+
+    /* GRID CARDS */
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 20px; }
+    .card {
+      background: var(--card); border-radius: 18px; padding: 20px;
+      box-shadow: var(--shadow); border: 1px solid var(--border); transition: .3s;
+    }
+    .card h3 { font-size: 13px; color: var(--text-soft); margin-bottom: 12px; font-weight: 600; }
+    .number { font-size: 32px; font-weight: 700; }
+    .small { color: var(--primary); font-size: 13px; margin-top: 8px; display: block; }
+
+    /* RESULTS BALLS */
+    .results { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .ball {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 13px; transition: .2s;
+    }
+    .ball.black { background: #0f172a; }
+    .ball.red { background: var(--red); }
+    .ball.white { background: white; color: black; border: 2px solid #d1d5db; }
+
+    /* PREVISÃO LISTA */
+    .previsao-lista { display: flex; flex-direction: column; gap: 6px; max-height: 600px; overflow-y: auto; }
+    .prev-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 16px; border-radius: 12px;
+      background: rgba(255,255,255,.02); border: 1px solid var(--border);
+      transition: .2s;
+    }
+    .prev-row:hover { background: rgba(91,92,255,.06); border-color: var(--primary); }
+    .prev-row .ordem { font-size: 12px; color: var(--text-soft); min-width: 30px; font-weight: 600; }
+    .prev-row .ball-white {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: white; border: 2px solid #d1d5db;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: #111;
+      box-shadow: 0 0 8px rgba(255,255,255,.3);
+    }
+    .prev-row .horario {
+      font-size: 20px; font-weight: 700; color: var(--text); min-width: 100px;
+    }
+    .prev-row .tempo-restante {
+      font-size: 13px; color: var(--primary); font-weight: 600; min-width: 80px;
+    }
+    .prev-row .rodadas-info {
+      font-size: 12px; color: var(--text-soft); margin-left: auto;
+    }
+    .prev-row.iminente { background: rgba(245,158,11,.08); border-color: var(--yellow); }
+    .prev-row.iminente .horario { color: var(--yellow); }
+    .prev-row.agora { background: rgba(34,197,94,.08); border-color: var(--green); animation: pulse-row 1.5s infinite; }
+    .prev-row.agora .horario { color: var(--green); }
+    @keyframes pulse-row { 0%,100% { opacity: 1; } 50% { opacity: .7; } }
+
+    /* SINAIS PASSADOS */
+    .sinais-lista { display: flex; flex-direction: column; gap: 6px; max-height: 600px; overflow-y: auto; }
+    .sinal-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(255,255,255,.02); border: 1px solid var(--border);
+      font-size: 13px; transition: .2s;
+    }
+    .sinal-row:hover { background: rgba(255,255,255,.04); }
+    .sinal-row .sinal-icon { font-size: 18px; min-width: 26px; text-align: center; }
+    .sinal-row .sinal-hora { color: var(--text-soft); min-width: 50px; font-size: 12px; }
+    .sinal-row .sinal-formula { color: var(--text); font-weight: 600; min-width: 90px; }
+    .sinal-row .sinal-resultado { margin-left: auto; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 20px; }
+    .sinal-row .sinal-resultado.acertou { background: rgba(34,197,94,.12); color: var(--green); }
+    .sinal-row .sinal-resultado.errou { background: rgba(239,68,68,.12); color: var(--red); }
+    .sinal-row .sinal-detalhe { font-size: 11px; color: var(--text-soft); }
+    .taxa-badge {
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+      background: rgba(91,92,255,.12); color: var(--primary);
+    }
+
+    /* LOADING */
+    .loading-state { text-align: center; padding: 60px 20px; color: var(--text-soft); }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(91,92,255,.3); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* PADRÃO CADEIA */
+    .cadeia-panel { margin-top: 20px; }
+    .cadeia-panel h3 { font-size: 16px; margin-bottom: 16px; color: var(--green); }
+    .cadeia-flow {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      padding: 14px; background: rgba(0,0,0,.15); border-radius: 12px;
+      border: 1px solid var(--border); margin-bottom: 14px;
+    }
+    .cadeia-step { display: flex; align-items: center; gap: 4px; }
+    .cadeia-num {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px;
+    }
+    .cadeia-num.c-branco { background: #fff; color: #000; border: 2px solid var(--green); }
+    .cadeia-num.c-normal { background: var(--card); color: var(--primary); border: 1px solid var(--border); }
+    .cadeia-num.c-alvo { background: rgba(245,158,11,.15); color: var(--yellow); border: 2px solid var(--yellow); animation: blink 1.5s infinite; }
+    .cadeia-num.c-risco { background: rgba(239,68,68,.1); color: var(--red); border: 2px solid var(--red); }
+    .cadeia-arrow { color: var(--text-soft); font-size: 14px; font-weight: 600; }
+    .cadeia-info-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px;
+    }
+    .cadeia-info-item {
+      background: rgba(0,0,0,.1); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px; text-align: center;
+    }
+    .cadeia-info-item label { display: block; font-size: 11px; color: var(--text-soft); margin-bottom: 4px; }
+    .cadeia-info-item span { font-size: 20px; font-weight: 800; }
+    .cadeia-confianca { height: 6px; border-radius: 3px; background: var(--border); margin: 10px 0 4px; overflow: hidden; }
+    .cadeia-confianca-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+    .cadeia-confianca-label { font-size: 11px; color: var(--text-soft); display: flex; justify-content: space-between; }
+    .cadeia-overshoot {
+      padding: 8px 14px; border-radius: 10px; margin-top: 10px;
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25);
+      color: var(--red); font-size: 12px;
+    }
+    .cadeia-dica {
+      padding: 10px 14px; border-radius: 10px; margin-top: 10px;
+      background: rgba(34,197,94,.06); border: 1px solid rgba(34,197,94,.2);
+      color: var(--green); font-size: 12px;
+    }
+    .cadeia-hist { margin-top: 14px; }
+    .cadeia-hist h4 { font-size: 12px; color: var(--text-soft); margin-bottom: 8px; }
+    .cadeia-hist-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.03); font-size: 11px;
+    }
+    .cadeia-timer { font-size: 11px; color: var(--text-soft); font-weight: 500; }
+
+    /* RESPONSIVE */
+    @media (max-width: 1200px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+      .cadeia-info-grid { grid-template-columns: 1fr 1fr !important; }
+    }
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; flex-direction: row; padding: 16px 20px; align-items: center; border-right: none; border-bottom: 1px solid var(--border); }
+      .sidebar .menu { flex-direction: row; margin-top: 0; gap: 6px; }
+      .sidebar .logo p { display: none; }
+      .sidebar-footer { margin-top: 0; margin-left: auto; padding: 10px 14px; }
+      .main { padding: 20px 16px; }
+      .grid { grid-template-columns: 1fr !important; }
+      div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+    }
+    @media (max-width: 600px) {
+      .topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .topbar h2 { font-size: 22px; }
+      .prev-row { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+      .prev-row .horario { font-size: 16px; min-width: auto; }
+      .prev-row .rodadas-info { margin-left: 0; }
+      .sinal-row { flex-wrap: wrap; gap: 6px; }
+      .sinal-row .sinal-resultado { margin-left: 0; }
+      .cadeia-info-grid { grid-template-columns: 1fr 1fr !important; }
+      .cadeia-flow { gap: 4px; padding: 10px; }
+      .cadeia-num { width: 32px; height: 32px; font-size: 12px; }
+      .card { padding: 16px; border-radius: 14px; }
+      .sidebar { padding: 12px 14px; }
+      .sidebar .menu a { padding: 8px 10px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div>
+      <div class="logo">
+        <h1>Padrão<span>X</span></h1>
+        <p>Previsão Temporal do Branco</p>
+      </div>
+      <nav class="menu">
+        <a class="active" href="#">Dashboard</a>
+        <a href="#">Regras</a>
+        <a href="#">Histórico</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <p>Última atualização</p>
+      <strong id="sidebarHora">--:--:--</strong>
+      <div class="live" id="sidebarLive" style="display:none">
+        <div class="dot"></div>
+        AO VIVO
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <h2>Dashboard</h2>
+        <p>Previsão do próximo branco usando Padrão X</p>
+      </div>
+      <div class="top-actions">
+        <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+      </div>
+    </div>
+
+    <!-- Estado inicial -->
+    <div id="estadoInicial" style="display:none"></div>
+
+    <!-- Loading -->
+    <div id="estadoLoading" style="display:none">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Buscando dados do TipMiner...</p>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" style="display:none">
+
+      <!-- Info resumo -->
+      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:20px;">
+        <div class="card">
+          <h3>Fórmula Ativa</h3>
+          <div class="number" id="formulaInfo" style="font-size:18px; color:var(--primary)">-</div>
+        </div>
+        <div class="card">
+          <h3>Último Branco</h3>
+          <div class="number" id="ultimoBrancoInfo" style="font-size:18px;">-</div>
+          <span class="small" id="rodadasAtrasInfo">-</span>
+        </div>
+        <div class="card">
+          <h3>Mediana Intervalo</h3>
+          <div class="number" id="medianaInfo">-</div>
+          <span class="small">rodadas entre brancos</span>
+        </div>
+      </div>
+
+      <!-- Controle quantidade -->
+      <div class="card" style="margin-bottom:20px; padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <label style="font-size:14px; font-weight:600;">Quantidade de previsões:</label>
+        <input type="range" id="qtdRange" min="5" max="100" value="20" oninput="document.getElementById('qtdLabel').textContent=this.value" style="flex:1; min-width:150px;">
+        <span id="qtdLabel" style="font-weight:700; color:var(--primary); min-width:30px;">20</span>
+        <button class="btn-buscar" onclick="carregarPrevisoes()" style="padding:10px 16px; font-size:13px;">Atualizar</button>
+      </div>
+
+      <!-- Previsões + Histórico lado a lado -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+
+        <!-- Lista de previsões -->
+        <div class="card" id="previsaoListCard">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px;">🎯 Próximos Brancos Previstos</h3>
+            <button onclick="copiarPrevisoes()" id="btnCopiar" style="background:rgba(91,92,255,.12);color:var(--primary);border:1px solid rgba(91,92,255,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">📋 Copiar</button>
+          </div>
+          <div id="previsaoLista" class="previsao-lista"></div>
+        </div>
+
+        <!-- Painel de sinais passados -->
+        <div class="card" id="sinaisPassadosCard">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px;">📊 Sinais Passados</h3>
+            <span class="taxa-badge" id="taxaAcerto">-</span>
+          </div>
+          <div id="sinaisLista" class="sinais-lista"></div>
+        </div>
+
+      </div>
+
+      <!-- PADRÃO CADEIA -->
+      <div class="card cadeia-panel" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>🔗 Padrão Cadeia — Previsão Refinada</h3>
+          <span class="cadeia-timer" id="cadeiaTimer">Atualiza em 5s</span>
+        </div>
+        <div id="padraoCadeiaContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+      <!-- PREVISÃO POR TEMPO -->
+      <div class="card" style="margin-top:20px; border-color: rgba(167,139,250,.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="font-size:16px; color:#a78bfa;">⏱️ Previsão por Tempo — Próximos Brancos</h3>
+          <button id="btnCopiarTempo" onclick="copiarHorariosTempo()" style="background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.3);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;">📋 Copiar</button>
+        </div>
+        <div id="previsaoTempoContent">
+          <p style="color:var(--text-soft);font-size:13px;padding:20px 0;">Buscando dados...</p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    let autoRefresh = null;
+
+    function copiarPrevisoes() {
+      const rows = document.querySelectorAll('#previsaoLista .prev-row');
+      if (rows.length === 0) return;
+      const linhas = [];
+      rows.forEach(row => {
+        const horario = row.querySelector('.horario')?.textContent?.trim();
+        if (horario) linhas.push(`${horario} - branco`);
+      });
+      const texto = linhas.join('\n');
+      navigator.clipboard.writeText(texto).then(() => {
+        const btn = document.getElementById('btnCopiar');
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+      });
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-btn');
+      if (html.getAttribute('data-theme') === 'dark') {
+        html.setAttribute('data-theme', 'light');
+        btn.innerHTML = '☀️';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        btn.innerHTML = '🌙';
+      }
+    }
+
+    async function buscarDados() {
+      // Só mostra loading na primeira vez
+      const dashboard = document.getElementById('dashboard');
+      const loadingEl = document.getElementById('estadoLoading');
+      const isFirstLoad = dashboard.style.display === 'none';
+      if (isFirstLoad) {
+        document.getElementById('estadoInicial').style.display = 'none';
+        loadingEl.style.display = 'block';
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        const resp = await fetch('/api/buscar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 1000 }),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        const data = await resp.json();
+
+        if (data.sucesso) {
+          setText('sidebarHora', data.ultimaBusca);
+          document.getElementById('sidebarLive').style.display = 'flex';
+          await carregarPrevisoes();
+        } else {
+          console.error(data.mensagem || 'Erro ao buscar dados');
+        }
+      } catch (e) {
+        console.error('Erro de conexão: ' + e.message);
+      } finally {
+        if (isFirstLoad) {
+          loadingEl.style.display = 'none';
+          dashboard.style.display = 'block';
+        }
+      }
+    }
+
+    // Utilitário: só atualiza innerHTML se mudou (evita flicker)
+    function setHTML(el, html) {
+      if (typeof el === 'string') el = document.getElementById(el);
+      if (el && el.innerHTML !== html) el.innerHTML = html;
+    }
+    function setText(el, text) {
+      if (typeof el === 'string') el = document.getElementById(el);
+      if (el && el.textContent !== text) el.textContent = text;
+    }
+
+    async function carregarPrevisoes() {
+      try {
+        const qtd = document.getElementById('qtdRange').value;
+        const resp = await fetch(`/api/previsoes?quantidade=${qtd}`);
+        const d = await resp.json();
+
+        if (d.erro) {
+          document.getElementById('estadoLoading').style.display = 'none';
+          document.getElementById('dashboard').style.display = 'block';
+          setHTML('previsaoLista', `<p style="color:var(--red);padding:20px;">${d.erro}</p>`);
+          return;
+        }
+
+        document.getElementById('estadoLoading').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+
+        // Info cards
+        setText('formulaInfo', d.formula);
+        setText('ultimoBrancoInfo', d.ultimoBranco.hora);
+        setText('rodadasAtrasInfo', `${d.ultimoBranco.rodadasAtras} rodadas atrás`);
+        setText('medianaInfo', String(d.medianaIntervalo));
+
+        // Lista de previsões
+        const novoHtml = d.previsoes.map(p => {
+          let rowClass = '';
+          if (p.rodadasRestantes === 0) rowClass = 'agora';
+          else if (p.rodadasRestantes <= 3) rowClass = 'iminente';
+
+          const metodoTag = p.metodo === 'CADEIA'
+            ? `<span style="font-size:10px;background:rgba(34,197,94,.12);color:var(--green);padding:2px 6px;border-radius:6px;font-weight:600;">CADEIA ${p.cadeiaSaltos}x</span>`
+            : p.metodo === 'MAX'
+            ? `<span style="font-size:10px;background:rgba(91,92,255,.12);color:var(--primary);padding:2px 6px;border-radius:6px;font-weight:600;">MAX</span>`
+            : '';
+
+          return `
+            <div class="prev-row ${rowClass}">
+              <span class="ordem">#${p.ordem}</span>
+              <div class="ball-white">0</div>
+              <span class="horario">${p.horario}</span>
+              <span class="tempo-restante">${p.tempoRestante}</span>
+              ${metodoTag}
+              <span class="rodadas-info">em ${p.rodadasRestantes} rodadas</span>
+            </div>
+          `;
+        }).join('');
+        setHTML('previsaoLista', novoHtml);
+
+        // Carregar sinais passados
+        await carregarSinais();
+
+      } catch (e) {
+        console.error('Erro ao carregar previsões:', e);
+      }
+    }
+
+    async function carregarSinais() {
+      try {
+        const resp = await fetch('/api/historico-sinais');
+        const d = await resp.json();
+
+        if (d.erro) {
+          setHTML('sinaisLista', `<p style="color:var(--text-soft)">${d.erro}</p>`);
+          return;
+        }
+
+        // Taxa de acerto (combinada)
+        const taxaEl = document.getElementById('taxaAcerto');
+        const pct = parseFloat(d.stats.taxa);
+        const taxaText = `${d.stats.acertos}/${d.stats.total} (${d.stats.taxa})`;
+        if (taxaEl.textContent !== taxaText) {
+          taxaEl.textContent = taxaText;
+          taxaEl.style.background = pct >= 30 ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)';
+          taxaEl.style.color = pct >= 30 ? 'var(--green)' : 'var(--red)';
+        }
+
+        // Lista de sinais
+        const novoHtml = d.sinais.map(s => {
+          const icon = s.acertou ? '✅' : '❌';
+          const resClass = s.acertou ? 'acertou' : 'errou';
+
+          let resText;
+          if (s.acertou) {
+            resText = s.metodo === 'CADEIA' ? `CADEIA ±${Math.abs(s.erroCadeia)}` : 'MAX ✓';
+          } else {
+            resText = s.metodo === 'CADEIA' ? `+${s.erroCadeia} passou` : `${s.status}`;
+          }
+
+          const metodoTag = s.metodo === 'CADEIA'
+            ? `<span style="font-size:10px;background:rgba(34,197,94,.08);color:var(--green);padding:1px 5px;border-radius:4px;">${s.cadeiaSaltos}x [${s.cadeiaNumeros}]</span>`
+            : '';
+
+          return `
+            <div class="sinal-row">
+              <span class="sinal-icon">${icon}</span>
+              <span class="sinal-hora">${s.horaBranco}</span>
+              <span class="sinal-formula">MAX(${s.n1},${s.n2})=${s.previsto}</span>
+              ${metodoTag}
+              <span class="sinal-resultado ${resClass}">${resText}</span>
+            </div>
+          `;
+        }).join('');
+        setHTML('sinaisLista', novoHtml);
+
+      } catch (e) {
+        console.error('Erro ao carregar sinais:', e);
+      }
+    }
+
+    // ========== PADRÃO CADEIA ==========
+    let cadeiaCountdown = 5;
+
+    async function carregarPadraoCadeia() {
+      const el = document.getElementById('padraoCadeiaContent');
+      try {
+        const resp = await fetch('/api/padrao-cadeia');
+        const d = await resp.json();
+
+        if (d.erro) {
+          el.innerHTML = `<p style="color:var(--red);font-size:13px;padding:10px 0;">${d.erro}</p>`;
+          return;
+        }
+
+        const statusText = {
+          aguardando: '⏳ Aguardando',
+          proximo: '📡 Próximo',
+          iminente: '🔥 IMINENTE',
+          atrasado: '⚠️ Atrasado'
+        }[d.previsao.status] || d.previsao.status;
+
+        const confColor = d.confianca > 65 ? 'var(--green)' : d.confianca > 40 ? 'var(--yellow)' : 'var(--red)';
+
+        // Cadeia visual
+        let cadeiaHtml = '';
+        if (d.cadeia.saltos.length > 0) {
+          cadeiaHtml = `<div class="cadeia-flow">`;
+          cadeiaHtml += `<div class="cadeia-step"><div class="cadeia-num c-branco">0</div></div>`;
+          cadeiaHtml += `<span class="cadeia-arrow">+${d.padraoX.max}→</span>`;
+          d.cadeia.saltos.forEach((s, i) => {
+            const isLast = i === d.cadeia.saltos.length - 1;
+            const cls = isLast ? (s.num >= 8 ? 'c-risco' : 'c-alvo') : (s.num >= 8 ? 'c-risco' : 'c-normal');
+            cadeiaHtml += `<div class="cadeia-step"><div class="cadeia-num ${cls}">${s.num}</div>`;
+            if (!isLast) cadeiaHtml += `<span class="cadeia-arrow">→</span>`;
+            cadeiaHtml += `</div>`;
+          });
+          cadeiaHtml += `<span class="cadeia-arrow">→</span>`;
+          cadeiaHtml += `<div class="cadeia-step"><div class="cadeia-num c-branco">?</div></div>`;
+          cadeiaHtml += `</div>`;
+        } else if (d.padraoX.alvoJaPassou) {
+          cadeiaHtml = `<div class="cadeia-flow"><span style="color:var(--green);font-size:13px;font-weight:600;">Alvo direto — sem cadeia necessária</span></div>`;
+        } else {
+          cadeiaHtml = `<div class="cadeia-flow"><span style="color:var(--text-soft);font-size:13px;">Aguardando posição alvo ser alcançada...</span></div>`;
+        }
+
+        // Tempo
+        const tempoMin = Math.floor(d.previsao.tempoEstimadoSeg / 60);
+        const tempoSeg = d.previsao.tempoEstimadoSeg % 60;
+        const tempoStr = tempoMin > 0 ? `~${tempoMin}m ${tempoSeg}s` : `~${tempoSeg}s`;
+
+        // Overshoot
+        let overshootHtml = '';
+        if (d.previsao.riscoOvershoot) {
+          overshootHtml = `<div class="cadeia-overshoot">⚠️ Último número = ${d.previsao.ultimoNumCadeia} (alto). Risco de overshoot — branco pode estar 1 casa ANTES.</div>`;
+        }
+
+        // Histórico
+        let histHtml = '';
+        if (d.historicoCadeia && d.historicoCadeia.length > 0) {
+          histHtml = `<div class="cadeia-hist"><h4>Histórico da Cadeia</h4>`;
+          d.historicoCadeia.forEach(h => {
+            const icon = h.acertou ? '✅' : '❌';
+            const cor = h.acertou ? 'var(--green)' : 'var(--red)';
+            const info = h.tipo === 'CADEIA' ? `${h.saltos}x [${h.cadeia}]` : 'direto';
+            histHtml += `<div class="cadeia-hist-row">
+              <span style="color:${cor}">${icon}</span>
+              <span style="color:var(--text-soft)">${h.hora}</span>
+              <span>${info}</span>
+              <span style="color:var(--text-soft);margin-left:auto">erro:${h.erro > 0 ? '+' : ''}${h.erro}</span>
+            </div>`;
+          });
+          histHtml += `</div>`;
+        }
+
+        const novoCadeiaHtml = `
+          <div class="cadeia-info-grid">
+            <div class="cadeia-info-item">
+              <label>Status</label>
+              <span style="font-size:14px;color:${d.previsao.status==='iminente'?'var(--yellow)':d.previsao.status==='atrasado'?'var(--red)':'var(--text)'}">${statusText}</span>
+            </div>
+            <div class="cadeia-info-item">
+              <label>MAX(${d.padraoX.n1},${d.padraoX.n2})</label>
+              <span style="color:var(--primary)">${d.padraoX.max}</span>
+            </div>
+            <div class="cadeia-info-item">
+              <label>Branco em</label>
+              <span style="color:var(--green)">${d.previsao.rodadasRestantes}</span>
+            </div>
+            <div class="cadeia-info-item">
+              <label>Ou (X-1)</label>
+              <span style="color:var(--yellow)">${d.previsao.rodadasRestantesMinus1}</span>
+            </div>
+          </div>
+
+          ${cadeiaHtml}
+
+          <div class="cadeia-confianca">
+            <div class="cadeia-confianca-fill" style="width:${d.confianca}%;background:${confColor}"></div>
+          </div>
+          <div class="cadeia-confianca-label">
+            <span>Confiança (${d.cadeia.totalSaltos} salto${d.cadeia.totalSaltos!==1?'s':''})</span>
+            <span style="color:${confColor};font-weight:700">${d.confianca}%</span>
+          </div>
+
+          ${overshootHtml}
+
+          <div class="cadeia-dica">
+            💡 ${d.previsao.status === 'iminente' ? 'Branco pode sair AGORA! Cubra posições X e X-1.' :
+                 d.previsao.status === 'atrasado' ? 'Cadeia já atingiu o alvo. Branco iminente ou já saiu.' :
+                 d.previsao.riscoOvershoot ? 'Número alto na cadeia — fique atento 1 casa antes.' :
+                 `Tempo estimado: ${tempoStr}. Cadeia com ${d.cadeia.totalSaltos} salto(s).`}
+          </div>
+
+          ${histHtml}
+        `;
+        setHTML(el, novoCadeiaHtml);
+      } catch (e) {
+        setHTML(el, `<p style="color:var(--red);font-size:13px;">${e.message}</p>`);
+      }
+    }
+
+    // Auto-refresh tudo a cada 5s
+    async function atualizarTudo() {
+      await buscarDados();
+      await carregarPadraoCadeia();
+      await carregarPrevisaoTempo();
+    }
+
+    // ========== PREVISÃO POR TEMPO ==========
+    let ultimosHorariosTempo = [];
+
+    function copiarHorariosTempo() {
+      if (ultimosHorariosTempo.length === 0) return;
+      const texto = ultimosHorariosTempo.map(h => `${h} ⚪🖤`).join('\n');
+      navigator.clipboard.writeText(texto).then(() => {
+        const btn = document.getElementById('btnCopiarTempo');
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+      });
+    }
+
+    async function carregarPrevisaoTempo() {
+      const el = document.getElementById('previsaoTempoContent');
+      try {
+        const resp = await fetch('/api/previsao-tempo');
+        const d = await resp.json();
+
+        if (d.erro) {
+          setHTML(el, `<p style="color:var(--red);font-size:13px;padding:10px 0;">${d.erro}</p>`);
+          return;
+        }
+
+        // Info do último branco
+        const infoHtml = `
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="font-size:12px;color:var(--text-soft)">
+              Último branco: <strong style="color:var(--text)">${d.ultimoBranco.hora}</strong> (${d.ultimoBranco.tipo}) — ${d.ultimoBranco.minutosAtras}min atrás | Hora atual: ${d.horaAtual}
+            </span>
+          </div>`;
+
+        // Todos os horários previstos
+        ultimosHorariosTempo = d.previsoes.map(p => p.horaPrevista);
+
+        let horasHtml = `<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">`;
+        d.previsoes.forEach(p => {
+          horasHtml += `
+            <div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.3);border-radius:12px;padding:12px 18px;text-align:center;min-width:90px;">
+              <div style="font-size:24px;font-weight:800;color:#a78bfa">${p.horaPrevista}</div>
+              <div style="font-size:9px;color:var(--text-soft);margin-top:3px">${p.metodo}</div>
+            </div>`;
+        });
+        horasHtml += `</div>`;
+
+        setHTML(el, infoHtml + horasHtml);
+      } catch (e) {
+        setHTML(el, `<p style="color:var(--red);font-size:13px;">${e.message}</p>`);
+      }
+    }
+
+    setInterval(() => {
+      cadeiaCountdown--;
+      const timerEl = document.getElementById('cadeiaTimer');
+      if (timerEl) timerEl.textContent = `Atualiza em ${cadeiaCountdown}s`;
+      if (cadeiaCountdown <= 0) {
+        cadeiaCountdown = 5;
+        atualizarTudo();
+      }
+    }, 1000);
+
+    // Carregar ao abrir automaticamente
+    atualizarTudo();
+  </script>
+
+  <!-- MODAL NOME -->
+  <div id="modalNome" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div style="background:var(--card);padding:36px;border-radius:20px;border:1px solid var(--border);max-width:360px;width:90%;text-align:center;">
+      <h2 style="margin-bottom:8px;font-size:22px;">👋 Bem-vindo!</h2>
+      <p style="color:var(--text-soft);font-size:13px;margin-bottom:20px;">Digite seu nome para entrar no chat</p>
+      <input id="inputNome" type="text" maxlength="20" placeholder="Seu nome..." style="width:100%;padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:15px;font-weight:600;outline:none;" autofocus>
+      <button id="btnEntrar" style="margin-top:14px;width:100%;padding:14px;border:none;border-radius:12px;background:var(--primary);color:white;font-size:15px;font-weight:700;cursor:pointer;">Entrar</button>
+    </div>
+  </div>
+
+  <!-- CHAT FLUTUANTE -->
+  <style>
+    #chatWidget { position:fixed; bottom:20px; right:20px; z-index:9000; font-family:'Inter',sans-serif; }
+    #chatToggle { width:56px; height:56px; border-radius:50%; background:var(--primary); border:none; color:white; font-size:24px; cursor:pointer; box-shadow:0 4px 15px rgba(91,92,255,.4); transition:.2s; position:relative; }
+    #chatToggle:hover { transform:scale(1.1); }
+    #chatBadge { position:absolute; top:-4px; right:-4px; background:var(--green); color:white; font-size:10px; font-weight:700; min-width:20px; height:20px; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 5px; }
+    #chatBox { display:none; width:340px; height:440px; background:var(--card); border:1px solid var(--border); border-radius:18px; box-shadow:0 10px 40px rgba(0,0,0,.5); flex-direction:column; overflow:hidden; position:absolute; bottom:70px; right:0; }
+    #chatBox.open { display:flex; }
+    #chatHeader { padding:14px 18px; background:var(--primary); color:white; display:flex; justify-content:space-between; align-items:center; }
+    #chatHeader h4 { font-size:14px; }
+    #chatOnline { font-size:11px; opacity:.8; }
+    #chatMsgs { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+    .chat-msg { max-width:85%; padding:8px 12px; border-radius:12px; font-size:13px; word-break:break-word; }
+    .chat-msg.outro { background:rgba(255,255,255,.06); border:1px solid var(--border); align-self:flex-start; }
+    .chat-msg.meu { background:var(--primary); color:white; align-self:flex-end; }
+    .chat-msg .chat-nome { font-size:10px; font-weight:700; color:var(--primary); margin-bottom:2px; display:block; }
+    .chat-msg.meu .chat-nome { color:rgba(255,255,255,.7); }
+    .chat-msg-sistema { text-align:center; font-size:11px; color:var(--text-soft); padding:4px; font-style:italic; }
+    #chatInput { display:flex; border-top:1px solid var(--border); }
+    #chatInput input { flex:1; border:none; padding:12px 16px; background:transparent; color:var(--text); font-size:13px; outline:none; }
+    #chatInput button { border:none; padding:12px 16px; background:var(--primary); color:white; font-weight:700; cursor:pointer; font-size:14px; }
+    @media (max-width:600px) { #chatBox { width:calc(100vw - 30px); right:-5px; height:380px; } }
+  </style>
+
+  <div id="chatWidget" style="display:none;">
+    <div id="chatBox">
+      <div id="chatHeader">
+        <div><h4>💬 Chat</h4><span id="chatOnline">0 online</span></div>
+      </div>
+      <div id="chatMsgs"></div>
+      <div id="chatInput">
+        <input id="chatTxt" type="text" maxlength="300" placeholder="Digite uma mensagem...">
+        <button onclick="enviarMsg()">➤</button>
+      </div>
+    </div>
+    <button id="chatToggle" onclick="toggleChat()">💬<span id="chatBadge" style="display:none">0</span></button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let meuNome = '';
+    let chatAberto = false;
+    let msgsPendentes = 0;
+    const socket = io();
+
+    // Modal nome
+    document.getElementById('btnEntrar').onclick = entrarChat;
+    document.getElementById('inputNome').addEventListener('keydown', e => { if (e.key === 'Enter') entrarChat(); });
+
+    function entrarChat() {
+      const nome = document.getElementById('inputNome').value.trim();
+      if (!nome) return;
+      meuNome = nome;
+      document.getElementById('modalNome').style.display = 'none';
+      document.getElementById('chatWidget').style.display = 'block';
+      socket.emit('entrar', meuNome);
+    }
+
+    // Chat toggle
+    function toggleChat() {
+      chatAberto = !chatAberto;
+      document.getElementById('chatBox').classList.toggle('open', chatAberto);
+      if (chatAberto) { msgsPendentes = 0; atualizarBadge(); }
+    }
+
+    function atualizarBadge() {
+      const b = document.getElementById('chatBadge');
+      if (msgsPendentes > 0) { b.style.display = 'flex'; b.textContent = msgsPendentes; }
+      else { b.style.display = 'none'; }
+    }
+
+    function enviarMsg() {
+      const input = document.getElementById('chatTxt');
+      const texto = input.value.trim();
+      if (!texto) return;
+      socket.emit('mensagem', texto);
+      input.value = '';
+    }
+    document.getElementById('chatTxt').addEventListener('keydown', e => { if (e.key === 'Enter') enviarMsg(); });
+
+    function addMsg(html) {
+      const msgs = document.getElementById('chatMsgs');
+      msgs.insertAdjacentHTML('beforeend', html);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    socket.on('mensagem', (msg) => {
+      const isMeu = msg.nome === meuNome;
+      addMsg(`<div class="chat-msg ${isMeu ? 'meu' : 'outro'}"><span class="chat-nome">${msg.nome} • ${msg.hora}</span>${msg.texto}</div>`);
+      if (!chatAberto && !isMeu) { msgsPendentes++; atualizarBadge(); }
+    });
+
+    socket.on('sistema', (data) => {
+      addMsg(`<div class="chat-msg-sistema">${data.texto}</div>`);
+    });
+
+    socket.on('usuarios', (data) => {
+      document.getElementById('chatOnline').textContent = `${data.total} online`;
+    });
+
+    socket.on('historico-chat', (msgs) => {
+      msgs.forEach(msg => {
+        const isMeu = msg.nome === meuNome;
+        addMsg(`<div class="chat-msg ${isMeu ? 'meu' : 'outro'}"><span class="chat-nome">${msg.nome} • ${msg.hora}</span>${msg.texto}</div>`);
+      });
+    });
+  </script>
+</body>
+</html>
